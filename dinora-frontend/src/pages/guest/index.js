@@ -1,0 +1,11 @@
+export { default as Landing } from './Landing.jsx';
+export { default as TableHome } from './TableHome.jsx';
+export { default as Menu } from './Menu.jsx';
+export { default as Category } from './Category.jsx';
+export { default as Item } from './Item.jsx';
+export { default as Cart } from './Cart.jsx';
+export { default as Orders } from './Orders.jsx';
+export { default as OrderDetail } from './OrderDetail.jsx';
+export { default as Payment } from './Payment.jsx';
+export { default as ThankYou } from './ThankYou.jsx';
+export { default as NotFound } from './NotFound.jsx';

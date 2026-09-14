@@ -1,0 +1,11 @@
+{
+  "buildCommand": "npm run build --prefix dinora-frontend",
+  "installCommand": "npm install --prefix dinora-frontend",
+  "outputDirectory": "dinora-frontend/dist",
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

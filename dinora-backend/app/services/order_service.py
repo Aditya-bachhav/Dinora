@@ -2,9 +2,10 @@
 Order business logic.
 
 Everything that mutates or reasons about order state lives here, not in
-routes/orders.py and not in services/order_automation.py directly. Routes
-call these functions and translate the result to HTTP; the background
-automation task calls advance_orders() the same way a route would.
+routes/orders.py. Order status is staff-driven only, via
+update_order_status() — called from routes/orders.py's PATCH
+/api/orders/{id}. See services/order_automation.py for why there is no
+background timer any more.
 
 Restaurant scoping: every admin-facing read/write takes a restaurant_id
 (derived from the authenticated admin, never from client input) and filters
@@ -16,7 +17,7 @@ import json
 from datetime import datetime
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.menu import MenuItem
 from app.models.order import Order
@@ -26,19 +27,6 @@ from app.models.table import Table
 from app.websocket.manager import manager
 
 ALLOWED_STATUSES = {"pending", "preparing", "ready", "served", "paid", "completed", "cancelled"}
-
-# Elapsed-time milestones for the automatic KITCHEN-PREP progression only.
-# Stops at "served" — an order only becomes "paid" through a real payment
-# (services/payment_service.py) or an explicit admin override, never as a
-# side effect of a timer. "completed" is likewise admin-only now (e.g. once
-# the table has been cleared), since auto-completing an unpaid order would
-# hide it from the counter before it was actually paid for.
-_MILESTONES = [
-    (5, "pending"),
-    (13, "preparing"),
-    (21, "ready"),
-    (10 ** 9, "served"),  # holds at "served" indefinitely — payment/completion are no longer automatic
-]
 
 
 # ---------------------------------------------------------------------------
@@ -198,6 +186,7 @@ def list_orders_for_restaurant(db: Session, restaurant_id: int) -> list[Order]:
     """Admin: all orders for THIS admin's restaurant only, newest first."""
     return (
         db.query(Order)
+        .options(joinedload(Order.table), selectinload(Order.items))
         .join(Table, Order.table_id == Table.id)
         .filter(Table.restaurant_id == restaurant_id)
         .order_by(Order.id.desc())
@@ -232,31 +221,3 @@ async def update_order_status(db: Session, order_id: int, restaurant_id: int, st
     db.refresh(order)
     await broadcast_order(db, "order_updated", order, restaurant_id)
     return order
-
-
-# ---------------------------------------------------------------------------
-# Automatic kitchen-status progression (called only by order_automation.py)
-# ---------------------------------------------------------------------------
-
-def advance_orders(db: Session) -> list[Order]:
-    """
-    Advance active orders through kitchen milestones based on elapsed time.
-    This is the ONLY function that mutates order.status automatically —
-    HTTP GET handlers never touch order state.
-    """
-    now = datetime.utcnow()
-    changed = []
-    for order in db.query(Order).filter(Order.status.notin_(["paid", "completed", "cancelled"])).all():
-        created = order.created_at or now
-        elapsed = max(0, (now - created).total_seconds())
-        target = "pending"
-        for seconds, status in _MILESTONES:
-            if elapsed < seconds:
-                target = status
-                break
-        if target != order.status:
-            order.status = target
-            changed.append(order)
-    if changed:
-        db.commit()
-    return changed

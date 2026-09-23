@@ -2,6 +2,7 @@ import { NavLink, Outlet, useParams } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useCart } from "../context/CartContext";
 import { guestApi } from "../services/api";
+import { IconCard, IconMenu, IconOrders } from "./ui/Icons";
 
 export default function GuestLayout() {
   const { tableToken } = useParams();
@@ -25,8 +26,9 @@ export default function GuestLayout() {
         <div className="guest-header-inner">
           <div className="guest-header-title">
             <strong>{tableInfo?.restaurant?.name || "Dinora"}</strong>
-            <span>{tableInfo ? `Table ${tableInfo.table.number}` : "Loading table…"}</span>
+            <span><i /> {tableInfo ? `Table ${tableInfo.table.number}` : "Preparing your table…"}</span>
           </div>
+          <div className="guest-header-mark" aria-hidden="true">D</div>
         </div>
       </header>
 
@@ -36,16 +38,16 @@ export default function GuestLayout() {
 
       <nav className="guest-bottom-nav">
         <NavLink to={`/t/${tableToken}/menu`} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-          <span className="nav-item-icon">🍴</span>
+          <span className="nav-item-icon"><IconMenu /></span>
           Menu
         </NavLink>
         <NavLink to={`/t/${tableToken}/cart`} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-          <span className="nav-item-icon">🛒</span>
+          <span className="nav-item-icon"><IconCard /></span>
           Cart
           {itemCount > 0 && <span className="nav-badge">{itemCount}</span>}
         </NavLink>
         <NavLink to={`/t/${tableToken}/orders`} className={({ isActive }) => `nav-item ${isActive ? "active" : ""}`}>
-          <span className="nav-item-icon">🧾</span>
+          <span className="nav-item-icon"><IconOrders /></span>
           Orders
         </NavLink>
       </nav>

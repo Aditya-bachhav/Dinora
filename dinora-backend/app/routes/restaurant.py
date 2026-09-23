@@ -6,6 +6,7 @@ from app.models.admin import AdminUser
 from app.models.restaurant import Restaurant
 from app.routes.auth import current_admin
 from app.schemas.payment import PaymentSettingsUpdate
+from app.schemas.restaurant import RestaurantProfileUpdate
 from app.services.restaurant_service import resolve_guest_restaurant_id
 
 router = APIRouter(tags=["restaurant"])
@@ -23,6 +24,58 @@ def get_restaurant(restaurant_id: int | None = None, db: Session = Depends(get_d
     rid = resolve_guest_restaurant_id(db, restaurant_id)
     restaurant = db.query(Restaurant).filter(Restaurant.id == rid).first()
     return {"id": restaurant.id, "name": restaurant.name, "location": restaurant.location}
+
+
+# ---------------------------------------------------------------------------
+# Admin: business profile (crew size, restaurant type, seating capacity) —
+# real onboarding detail so the owner (and the platform) has an accurate
+# picture of the restaurant, not just a name.
+# ---------------------------------------------------------------------------
+
+@router.get("/profile")
+def get_restaurant_profile(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(current_admin),
+) -> dict:
+    """MY restaurant's business profile, plus whether it's been filled in
+    yet (crew_size is the required field — see Restaurant.has_business_profile)."""
+    restaurant = db.query(Restaurant).filter(Restaurant.id == admin.restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+    return {
+        "name": restaurant.name,
+        "restaurant_type": restaurant.restaurant_type,
+        "crew_size": restaurant.crew_size,
+        "seating_capacity": restaurant.seating_capacity,
+        "profile_complete": restaurant.has_business_profile,
+    }
+
+
+@router.put("/profile")
+def set_restaurant_profile(
+    body: RestaurantProfileUpdate,
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(current_admin),
+) -> dict:
+    """Admin fills in MY restaurant's business profile — crew size,
+    restaurant type, seating capacity. Called from the onboarding wizard,
+    but also safe to call again later from Settings to update it."""
+    restaurant = db.query(Restaurant).filter(Restaurant.id == admin.restaurant_id).first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    restaurant.crew_size = body.crew_size
+    restaurant.restaurant_type = body.restaurant_type
+    restaurant.seating_capacity = body.seating_capacity
+    db.commit()
+
+    return {
+        "name": restaurant.name,
+        "restaurant_type": restaurant.restaurant_type,
+        "crew_size": restaurant.crew_size,
+        "seating_capacity": restaurant.seating_capacity,
+        "profile_complete": restaurant.has_business_profile,
+    }
 
 
 # ---------------------------------------------------------------------------

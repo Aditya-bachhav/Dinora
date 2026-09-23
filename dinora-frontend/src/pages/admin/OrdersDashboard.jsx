@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
+import { animate, stagger } from "animejs";
 import { adminApi } from "../../services/api";
 import { connectCounterSocket } from "../../services/ws";
 import { useToast } from "../../context/ToastContext";
 import StatusBadge from "../../components/StatusBadge";
+import StatusDropdown from "../../components/StatusDropdown";
 import ConnectionStatus from "../../components/ConnectionStatus";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
@@ -76,6 +78,22 @@ export default function OrdersDashboard() {
     [orders, filter]
   );
 
+  useEffect(() => {
+    if (status !== "ready" || visibleOrders.length === 0) return undefined;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelectorAll("[data-order-row]").forEach((row) => { row.style.opacity = "1"; });
+      return undefined;
+    }
+    const animation = animate("[data-order-row]", {
+      opacity: [0, 1],
+      translateY: [12, 0],
+      delay: stagger(45),
+      duration: 420,
+      ease: "outQuart",
+    });
+    return () => animation.cancel();
+  }, [status, visibleOrders.length, filter]);
+
   function getFilterCount(value) {
     if (value === "all") return orders.length;
     return orders.filter((o) => o.status === value).length;
@@ -111,8 +129,20 @@ export default function OrdersDashboard() {
 
   if (status === "loading") {
     return (
-      <div>
-        <div className="admin-order-list">
+      <div className="admin-orders-page admin-orders-loading" aria-busy="true">
+        <div className="admin-page-head">
+          <div>
+            <div className="orders-loading-kicker">LIVE SERVICE</div>
+            <h1>Orders</h1>
+            <p>Preparing your service queue…</p>
+          </div>
+          <div className="orders-loading-pulse" />
+        </div>
+        <div className="orders-summary-grid">
+          {Array.from({ length: 4 }).map((_, index) => <div className="orders-summary-skeleton" key={index} />)}
+        </div>
+        <div className="admin-table-wrap orders-loading-table">
+          <OrderCardSkeleton />
           <OrderCardSkeleton />
           <OrderCardSkeleton />
         </div>
@@ -128,21 +158,51 @@ export default function OrdersDashboard() {
     <div className="admin-orders-page">
       <div className="admin-page-head">
         <div>
+          <div className="orders-page-kicker"><span /> Live order flow</div>
           <h1>Orders</h1>
-          <p>Track incoming orders and manage their progress</p>
+          <p>Keep the floor, kitchen, and payments moving together.</p>
         </div>
         <div className="admin-page-head-actions">
           <ConnectionStatus status={wsStatus} />
         </div>
       </div>
 
-      <div className="chip-row">
+      <div className="orders-summary-grid">
+        <div className="orders-summary-card orders-summary-card-featured">
+          <span className="orders-summary-label">Open orders</span>
+          <strong>{orders.filter((order) => !["completed", "cancelled"].includes(order.status)).length}</strong>
+          <span className="orders-summary-note">Needs attention today</span>
+        </div>
+        <div className="orders-summary-card">
+          <span className="orders-summary-label">Preparing</span>
+          <strong>{getFilterCount("preparing")}</strong>
+          <span className="orders-summary-note">In the kitchen</span>
+        </div>
+        <div className="orders-summary-card">
+          <span className="orders-summary-label">Ready to serve</span>
+          <strong>{getFilterCount("ready")}</strong>
+          <span className="orders-summary-note">Waiting on the floor</span>
+        </div>
+        <div className="orders-summary-card">
+          <span className="orders-summary-label">Collected</span>
+          <strong>₹{orders.filter((order) => order.status === "paid").reduce((sum, order) => sum + Number(order.total_amount || 0), 0).toFixed(0)}</strong>
+          <span className="orders-summary-note">Paid orders in view</span>
+        </div>
+      </div>
+
+      <div className="orders-filter-bar">
+        <div className="orders-filter-heading">
+          <strong>Service queue</strong>
+          <span>{visibleOrders.length} {visibleOrders.length === 1 ? "order" : "orders"}</span>
+        </div>
+        <div className="chip-row">
         {FILTERS.map((f) => (
           <button key={f} className={`chip ${filter === f ? "active" : ""}`} onClick={() => setFilter(f)}>
             {f === "all" ? "All" : f}
             <span style={{ marginLeft: 6, opacity: 0.7 }}>{getFilterCount(f)}</span>
           </button>
         ))}
+        </div>
       </div>
 
       {visibleOrders.length === 0 ? (
@@ -156,7 +216,7 @@ export default function OrdersDashboard() {
           {/* Mobile: card list */}
           <div className="admin-order-list">
             {visibleOrders.map((order) => (
-              <div key={order.id} className="card admin-order-card">
+              <div key={order.id} className="card admin-order-card" data-order-row>
                 <div className="admin-order-card-top">
                   <div>
                     <strong>Order #{order.id}</strong>
@@ -173,22 +233,12 @@ export default function OrdersDashboard() {
                 </div>
                 <div className="admin-order-total">₹{order.total_amount.toFixed(2)}</div>
                 <div className="admin-order-actions">
-                  <select
-                    value={MANUAL_STATUSES.includes(order.status) ? order.status : ""}
+                  <StatusDropdown
+                    value={MANUAL_STATUSES.includes(order.status) ? order.status : order.status}
+                    options={MANUAL_STATUSES}
                     disabled={updatingId === order.id}
-                    onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                  >
-                    {!MANUAL_STATUSES.includes(order.status) && (
-                      <option value="" disabled>
-                        {order.status}
-                      </option>
-                    )}
-                    {MANUAL_STATUSES.map((s) => (
-                      <option key={s} value={s}>
-                        {s}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(next) => handleStatusChange(order.id, next)}
+                  />
                   {order.status !== "paid" && order.status !== "cancelled" && (
                     <button
                       className="btn btn-secondary btn-sm"
@@ -219,7 +269,7 @@ export default function OrdersDashboard() {
               </thead>
               <tbody>
                 {visibleOrders.map((order) => (
-                  <tr key={order.id}>
+                  <tr key={order.id} data-order-row>
                     <td>#{order.id}</td>
                     <td>{order.table_number ?? "—"}</td>
                     <td>
@@ -234,22 +284,12 @@ export default function OrdersDashboard() {
                       <StatusBadge status={order.status} />
                     </td>
                     <td>
-                      <select
-                        value={MANUAL_STATUSES.includes(order.status) ? order.status : ""}
+                      <StatusDropdown
+                        value={order.status}
+                        options={MANUAL_STATUSES}
                         disabled={updatingId === order.id}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                      >
-                        {!MANUAL_STATUSES.includes(order.status) && (
-                          <option value="" disabled>
-                            {order.status}
-                          </option>
-                        )}
-                        {MANUAL_STATUSES.map((s) => (
-                          <option key={s} value={s}>
-                            {s}
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(next) => handleStatusChange(order.id, next)}
+                      />
                     </td>
                     <td>
                       {order.status === "paid" ? (

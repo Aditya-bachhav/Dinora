@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { animate, stagger } from "animejs";
 import { adminApi } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import Sheet from "../../components/ui/Sheet";
@@ -31,6 +32,23 @@ export default function Tables() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    if (status !== "ready" || tables.length === 0) return undefined;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelectorAll("[data-table-card]").forEach((card) => { card.style.opacity = "1"; });
+      return undefined;
+    }
+    const animation = animate("[data-table-card]", {
+      opacity: [0, 1],
+      scale: [0.92, 1],
+      translateY: [12, 0],
+      delay: stagger(55),
+      duration: 480,
+      ease: "outBack",
+    });
+    return () => animation.cancel();
+  }, [status, tables.length]);
 
   async function handleCreate(e) {
     e.preventDefault();
@@ -97,13 +115,18 @@ export default function Tables() {
 
   if (status === "loading") {
     return (
-      <div>
-        <table className="admin-table">
-          <tbody>
-            <TableRowSkeleton cols={3} />
-            <TableRowSkeleton cols={3} />
-          </tbody>
-        </table>
+      <div className="admin-tables-page admin-tables-loading" aria-busy="true">
+        <div className="admin-page-head">
+          <div>
+            <div className="tables-page-kicker">FLOOR PLAN</div>
+            <h1>Tables</h1>
+            <p>Setting up your guest stations…</p>
+          </div>
+          <div className="tables-loading-pulse" />
+        </div>
+        <div className="tables-map-skeleton">
+          {Array.from({ length: 6 }).map((_, index) => <div key={index} />)}
+        </div>
       </div>
     );
   }
@@ -116,24 +139,32 @@ export default function Tables() {
     <div className="admin-tables-page">
       <div className="admin-page-head">
         <div>
+          <div className="tables-page-kicker"><span /> Floor plan</div>
           <h1>Tables</h1>
-          <p>Manage your tables and their QR codes</p>
+          <p>Give every guest station a clear, scan-ready home.</p>
         </div>
       </div>
 
-      <form className="inline-form" onSubmit={handleCreate} style={{ marginBottom: 24 }}>
-        <input
-          type="number"
-          min="1"
-          placeholder="Table number"
-          value={newNumber}
-          onChange={(e) => setNewNumber(e.target.value)}
-          required
-        />
-        <button type="submit" className="btn btn-primary" disabled={creating}>
-          {creating ? <Spinner size={16} /> : "Add table"}
-        </button>
-      </form>
+      <div className="tables-toolbar">
+        <div className="tables-stat-line">
+          <strong>{tables.length}</strong>
+          <span>{tables.length === 1 ? "guest station" : "guest stations"} ready</span>
+        </div>
+        <form className="tables-add-form" onSubmit={handleCreate}>
+          <input
+            type="number"
+            min="1"
+            placeholder="New table number"
+            value={newNumber}
+            onChange={(e) => setNewNumber(e.target.value)}
+            required
+            aria-label="New table number"
+          />
+          <button type="submit" className="btn btn-primary" disabled={creating}>
+            {creating ? <Spinner size={16} /> : "Add table"}
+          </button>
+        </form>
+      </div>
 
       {tables.length === 0 ? (
         <EmptyState
@@ -142,17 +173,15 @@ export default function Tables() {
           message="Add your first table above to generate its QR code."
         />
       ) : (
-        <div className="table-list">
+        <div className="tables-simple-grid">
           {tables.map((table) => (
-            <div key={table.id} className="card table-row-card">
-              <div className="table-row-card-info">
-                <div className="table-number-badge">{table.number}</div>
-                <div>
-                  <div style={{ fontFamily: "var(--font-ui)", fontWeight: 700, fontSize: 14 }}>Table {table.number}</div>
-                  <div className="table-status">{table.status}</div>
-                </div>
+            <div key={table.id} className="table-simple-card" data-table-card>
+              <div className="table-simple-number">{String(table.number).padStart(2, "0")}</div>
+              <div className="table-simple-details">
+                <strong>Table {table.number}</strong>
+                <span><i className={`table-simple-dot table-simple-dot-${table.status}`} />{table.status}</span>
               </div>
-              <button className="btn btn-secondary btn-sm" onClick={() => handleShowQr(table)}>
+              <button className="table-simple-qr" onClick={() => handleShowQr(table)} aria-label={`View QR for table ${table.number}`}>
                 View QR
               </button>
             </div>

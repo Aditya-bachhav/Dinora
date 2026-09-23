@@ -8,7 +8,6 @@ from app.models.admin import AdminUser
 from app.routes.auth import current_admin
 from app.schemas.menu import CategoryCreate
 from app.services import menu_service
-from app.services.restaurant_service import resolve_guest_restaurant_id
 
 router = APIRouter(tags=["categories"])
 
@@ -20,8 +19,11 @@ router = APIRouter(tags=["categories"])
 
 
 @router.get("")
-def list_categories(restaurant_id: int | None = None, db: Session = Depends(get_db)) -> list[dict]:
-    rid = resolve_guest_restaurant_id(db, restaurant_id)
+def list_categories(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(current_admin),
+) -> list[dict]:
+    rid = admin.restaurant_id
     categories = menu_service.list_categories_for_restaurant(db, rid)
     return [
         {"id": c.id, "slug": c.slug, "name": c.name, "restaurant_id": c.restaurant_id}

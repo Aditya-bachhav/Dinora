@@ -16,6 +16,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from app.models.restaurant import Restaurant
+from app.models.session import DiningSession
+from app.models.table import Table
 
 
 def resolve_guest_restaurant_id(db: Session, explicit_restaurant_id: int | None) -> int:
@@ -36,3 +38,18 @@ def resolve_guest_restaurant_id(db: Session, explicit_restaurant_id: int | None)
             ),
         )
     return restaurants[0].id
+
+
+def resolve_session_restaurant_id(db: Session, session_id: str) -> int:
+    session = (
+        db.query(DiningSession)
+        .filter(DiningSession.id == session_id, DiningSession.status == "active")
+        .first()
+    )
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    table = db.query(Table).filter(Table.id == session.table_id).first()
+    if not table:
+        raise HTTPException(status_code=404, detail="Table not found")
+    return table.restaurant_id

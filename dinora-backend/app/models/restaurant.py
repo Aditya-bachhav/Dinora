@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, func
 from sqlalchemy.orm import relationship
 
 from app.core.database import Base
@@ -13,6 +13,22 @@ class Restaurant(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String, nullable=False)
     location = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Platform-level kill switch, set only via the Super Admin API
+    # (routes/super_admin.py PATCH /api/super-admin/restaurants/{id}).
+    # When False: owner/staff login is blocked (see routes/auth.py) and the
+    # restaurant is treated as offline. Restaurant rows themselves are
+    # never deleted — this is the platform's suspend/reinstate control.
+    is_active = Column(Boolean, nullable=False, default=True, server_default="true")
+
+    # Business profile — collected during onboarding so the owner (and the
+    # platform) has a real picture of the restaurant, not just its name.
+    # All nullable: existing restaurants created before this field existed,
+    # and anyone who skips this onboarding step, simply have it unset.
+    restaurant_type = Column(String, nullable=True)  # e.g. "cafe", "fine_dining"
+    crew_size = Column(Integer, nullable=True)  # total staff, owner included
+    seating_capacity = Column(Integer, nullable=True)  # approx guest seats
 
     # Per-restaurant Razorpay credentials — set via
     # PATCH /api/restaurant/payment-settings (admin, own restaurant only).
@@ -44,3 +60,10 @@ class Restaurant(Base):
     @property
     def has_own_payment_credentials(self) -> bool:
         return bool(self.razorpay_key_id and self.razorpay_key_secret_encrypted)
+
+    @property
+    def has_business_profile(self) -> bool:
+        """True once the owner has come through the business-details
+        onboarding step at least once (crew_size is the required field
+        there; type and seating are optional)."""
+        return self.crew_size is not None

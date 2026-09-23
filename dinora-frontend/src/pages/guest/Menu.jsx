@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { guestApi, getStoredSessionId } from "../../services/api";
 import { useCart } from "../../context/CartContext";
@@ -6,6 +6,7 @@ import { useToast } from "../../context/ToastContext";
 import Sheet from "../../components/ui/Sheet";
 import EmptyState from "../../components/ui/EmptyState";
 import { MenuItemSkeleton } from "../../components/ui/Skeleton";
+import { animate, stagger } from "animejs";
 
 export default function Menu() {
   const { tableToken } = useParams();
@@ -20,6 +21,7 @@ export default function Menu() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [detailItem, setDetailItem] = useState(null);
   const [detailQty, setDetailQty] = useState(1);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     const sessionId = getStoredSessionId(tableToken);
@@ -34,7 +36,7 @@ export default function Menu() {
       setStatus("loading");
       try {
         await guestApi.getSession(sessionId);
-        const data = await guestApi.getMenu();
+        const data = await guestApi.getMenu(sessionId);
         if (!cancelled) {
           setMenu(data);
           setActiveCategory(data.categories[0]?.id ?? null);
@@ -67,6 +69,18 @@ export default function Menu() {
       .filter((cat) => cat.items.length > 0);
   }, [menu.categories, search]);
 
+  useEffect(() => {
+    if (status !== "ready" || !menuRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+    const animation = animate(menuRef.current.querySelectorAll("[data-guest-dish]"), {
+      opacity: [0, 1],
+      translateY: [10, 0],
+      delay: stagger(35),
+      duration: 420,
+      ease: "outQuart",
+    });
+    return () => animation.revert();
+  }, [status, filteredCategories.length, search]);
+
   function quantityInCart(menuItemId) {
     const found = cartItems.find((i) => i.menu_item_id === menuItemId);
     return found ? found.quantity : 0;
@@ -91,6 +105,7 @@ export default function Menu() {
     }
     toast.success(`${detailItem.name} × ${detailQty} in cart`);
     setDetailItem(null);
+    navigate(`/t/${tableToken}/cart`);
   }
 
   if (status === "loading") {
@@ -121,7 +136,12 @@ export default function Menu() {
   }
 
   return (
-    <div className="menu-page">
+    <div className="menu-page guest-menu-page" ref={menuRef}>
+      <div className="guest-page-intro">
+        <span className="guest-eyebrow">Tonight's menu</span>
+        <h1>Find something<br /><em>worth sharing.</em></h1>
+        <p>Fresh from the kitchen, ready when you are.</p>
+      </div>
       <div className="menu-search">
         <input
           type="search"
@@ -159,6 +179,7 @@ export default function Menu() {
                 <button
                   key={item.id}
                   className={`menu-item ${!item.available ? "unavailable" : ""}`}
+                  data-guest-dish
                   onClick={() => item.available && openDetail(item)}
                   disabled={!item.available}
                 >

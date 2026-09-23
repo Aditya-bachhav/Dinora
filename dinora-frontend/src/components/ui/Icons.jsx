@@ -113,6 +113,16 @@ export function IconArrowRight(props) {
   );
 }
 
+export function IconUsers(props) {
+  return (
+    <svg {...base} {...props}>
+      <circle cx="9" cy="8" r="3.25" stroke="currentColor" strokeWidth="1.6" />
+      <path d="M3.5 19.5c0-3.2 2.46-5.5 5.5-5.5s5.5 2.3 5.5 5.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      <path d="M15.5 5.1c1.4.35 2.4 1.6 2.4 3.05 0 1.46-1 2.7-2.4 3.05M17.5 14.2c1.75.5 3 2.1 3 4v1.3" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconSkip(props) {
   return (
     <svg {...base} {...props}>

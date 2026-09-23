@@ -5,6 +5,7 @@
 const API_BASE_URL = (import.meta.env.VITE_API_URL || "http://localhost:8000").replace(/\/$/, "");
 
 const ADMIN_TOKEN_KEY = "dinora_admin_token";
+const SUPER_ADMIN_TOKEN_KEY = "dinora_super_admin_token";
 const SESSION_KEY_PREFIX = "dinora_session_"; // + table token -> session_id
 
 export function getAdminToken() {
@@ -17,6 +18,21 @@ export function setAdminToken(token) {
 
 export function clearAdminToken() {
   localStorage.removeItem(ADMIN_TOKEN_KEY);
+}
+
+// Super admin (Dinora platform operator) auth is stored under a completely
+// separate key from the restaurant admin token, in its own namespace, so
+// being logged in as one never implies or leaks into the other.
+export function getSuperAdminToken() {
+  return localStorage.getItem(SUPER_ADMIN_TOKEN_KEY) || "";
+}
+
+export function setSuperAdminToken(token) {
+  if (token) localStorage.setItem(SUPER_ADMIN_TOKEN_KEY, token);
+}
+
+export function clearSuperAdminToken() {
+  localStorage.removeItem(SUPER_ADMIN_TOKEN_KEY);
 }
 
 export function getStoredSessionId(tableToken) {
@@ -73,7 +89,10 @@ async function request(path, { method = "GET", body, auth = false, headers = {} 
   const finalHeaders = { ...headers };
   if (body !== undefined) finalHeaders["Content-Type"] = "application/json";
   if (auth) {
-    const token = getAdminToken();
+    // auth === true (or "admin") uses the restaurant admin token;
+    // auth === "super_admin" uses the completely separate platform token.
+    // These are never interchangeable — see routes/super_admin.py.
+    const token = auth === "super_admin" ? getSuperAdminToken() : getAdminToken();
     if (token) finalHeaders["Authorization"] = `Bearer ${token}`;
   }
 
@@ -94,7 +113,8 @@ async function request(path, { method = "GET", body, auth = false, headers = {} 
 
   // Auth expired/invalid — surface a specific error so the UI can redirect to login.
   if (res.status === 401 && auth) {
-    clearAdminToken();
+    if (auth === "super_admin") clearSuperAdminToken();
+    else clearAdminToken();
   }
 
   let payload = null;
@@ -158,8 +178,10 @@ export const guestApi = {
   closeSession: (sessionId) =>
     request(`/api/sessions/${encodeURIComponent(sessionId)}/close`, { method: "POST" }),
 
-  // GET /api/menu — single-restaurant auto-resolve (see backend README)
-  getMenu: () => request("/api/menu"),
+  // GET /api/menu?session_id=... — derives the restaurant from the guest's
+  // active table session, so multi-restaurant deployments stay tenant-safe.
+  getMenu: (sessionId) =>
+    request(`/api/menu?session_id=${encodeURIComponent(sessionId)}`),
 
   // POST /api/orders — body: { session_id, items: [{menu_item_id, quantity}] }
   // Price is always computed server-side; client never sends totals.
@@ -220,6 +242,23 @@ export const adminApi = {
   // public lookup rather than needing a separate authenticated endpoint.
   getMyRestaurant: (restaurantId) => request(`/api/restaurant?restaurant_id=${restaurantId}`),
 
+  // GET /api/restaurant/profile — MY restaurant's business profile (crew
+  // size, restaurant type, seating capacity) plus whether it's been filled
+  // in yet. Collected during onboarding; editable again from Settings.
+  getRestaurantProfile: () => request("/api/restaurant/profile", { auth: true }),
+
+  // PUT /api/restaurant/profile — body: { crew_size, restaurant_type, seating_capacity }.
+  setRestaurantProfile: (crewSize, restaurantType, seatingCapacity) =>
+    request("/api/restaurant/profile", {
+      method: "PUT",
+      auth: true,
+      body: {
+        crew_size: crewSize,
+        restaurant_type: restaurantType || null,
+        seating_capacity: seatingCapacity || null,
+      },
+    }),
+
   // GET /api/orders — orders for MY restaurant only
   listOrders: () => request("/api/orders", { auth: true }),
 
@@ -255,8 +294,8 @@ export const adminApi = {
     return res.blob();
   },
 
-  // GET /api/menu/categories (also mirrored at /api/categories — same backend logic)
-  listCategories: () => request("/api/menu/categories"),
+  // GET /api/menu/categories — categories for the authenticated admin's restaurant
+  listCategories: () => request("/api/menu/categories", { auth: true }),
 
   // POST /api/menu/categories — body: { name, slug? }
   createCategory: (name) =>
@@ -297,6 +336,33 @@ export const adminApi = {
   // fallback credentials (if any are configured) rather than turning
   // payments off entirely.
   clearPaymentSettings: () => request("/api/restaurant/payment-settings", { method: "DELETE", auth: true }),
+};
+
+// ---------------------------------------------------------------------------
+// Super Admin (Dinora platform operators — POST /api/super-admin/*)
+// Completely separate token namespace from adminApi above — see
+// getSuperAdminToken/setSuperAdminToken and routes/super_admin.py.
+// ---------------------------------------------------------------------------
+export const superAdminApi = {
+  login: (email, password) =>
+    request("/api/super-admin/login", { method: "POST", body: { email, password } }),
+
+  me: () => request("/api/super-admin/me", { auth: "super_admin" }),
+
+  // GET /api/super-admin/restaurants — every tenant, with owner + crew
+  // size + status, for the platform dashboard.
+  listRestaurants: () => request("/api/super-admin/restaurants", { auth: "super_admin" }),
+
+  getRestaurant: (id) => request(`/api/super-admin/restaurants/${id}`, { auth: "super_admin" }),
+
+  // PATCH /api/super-admin/restaurants/{id} — body: { is_active }. The
+  // only mutation a super admin can make to a tenant: suspend/reinstate.
+  setRestaurantActive: (id, isActive) =>
+    request(`/api/super-admin/restaurants/${id}`, {
+      method: "PATCH",
+      auth: "super_admin",
+      body: { is_active: isActive },
+    }),
 };
 
 export { API_BASE_URL, ApiError };

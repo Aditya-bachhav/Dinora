@@ -44,6 +44,15 @@ def current_admin(request: Request, db: Session = Depends(get_db)) -> AdminUser:
 
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[TOKEN_ALGORITHM])
+        # Reject any token carrying a "typ" claim — restaurant admin tokens
+        # never set one, only routes/super_admin.py's tokens do (typ:
+        # "super_admin"). Without this check, a super admin's token would
+        # decode successfully here too (same signing key) and its numeric
+        # id could collide with an unrelated AdminUser.id, letting a
+        # platform operator's session pass as a restaurant admin's. See
+        # routes/super_admin.py's current_super_admin for the mirror check.
+        if payload.get("typ") is not None:
+            raise HTTPException(status_code=401, detail="Invalid or expired admin session")
         user_id = int(payload.get("sub"))
     except (jwt.PyJWTError, TypeError, ValueError):
         raise HTTPException(status_code=401, detail="Invalid or expired admin session") from None
@@ -126,6 +135,14 @@ async def login(body: AdminLogin, db: Session = Depends(get_db)):
         # gets blocked by someone else's earlier bad guesses at this email.
         _login_limiter.record(email)
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    restaurant = db.query(Restaurant).filter(Restaurant.id == user.restaurant_id).first()
+    if restaurant is not None and not restaurant.is_active:
+        # Suspended by a Dinora super admin (see routes/super_admin.py).
+        # Correct credentials still get a 403, not a generic auth failure,
+        # so the owner sees why they're locked out rather than assuming
+        # they mistyped their password.
+        raise HTTPException(status_code=403, detail="This restaurant's account has been suspended. Contact Dinora support.")
 
     _login_limiter.reset(email)
 

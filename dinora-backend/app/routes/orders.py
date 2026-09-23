@@ -70,6 +70,8 @@ async def update_order(
     db: Session = Depends(get_db),
     admin: AdminUser = Depends(current_admin),
 ) -> dict:
-    """Admin: manual status correction. Normal workflow is fully automatic."""
+    """Admin: update an order's status. This is how kitchen/floor staff move
+    an order through pending -> preparing -> ready -> served (and on to
+    completed/cancelled) — there is no automatic timer any more."""
     order = await order_service.update_order_status(db, order_id, admin.restaurant_id, body.status)
     return order_service.serialize_order(order, db)

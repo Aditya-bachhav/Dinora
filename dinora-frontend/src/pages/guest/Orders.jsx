@@ -9,6 +9,8 @@ import OrderProgress from "../../components/ui/OrderProgress";
 import EmptyState from "../../components/ui/EmptyState";
 import { OrderCardSkeleton } from "../../components/ui/Skeleton";
 import Spinner from "../../components/ui/Spinner";
+import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
 // Statuses at which the "Pay" button becomes available — matches
 // backend order_service.ALLOWED_STATUSES minus the ones that don't make
@@ -131,8 +133,12 @@ export default function Orders() {
   return (
     <div className="orders-page">
       <header className="orders-header">
-        <h1 style={{ fontSize: 20 }}>Your orders</h1>
-        <ConnectionStatus status={wsStatus} />
+        <div className="guest-page-heading">
+          <span className="guest-eyebrow"><ClipboardList size={13} /> Live order desk</span>
+          <h1>Follow every<br /><em>delicious step.</em></h1>
+          <p>Your kitchen status updates here in real time.</p>
+        </div>
+        <span className="guest-live-status"><i /> <ConnectionStatus status={wsStatus} /></span>
       </header>
 
       {orders.length === 0 ? (
@@ -152,6 +158,7 @@ export default function Orders() {
             <div key={order.id} className="card order-card">
               <div className="order-card-header">
                 <strong>Order #{order.id}</strong>
+                <span className={`guest-order-status guest-order-status-${order.status}`}>{order.status}</span>
               </div>
 
               <OrderProgress status={order.status} />
@@ -190,7 +197,7 @@ export default function Orders() {
 
       {orders.length > 0 && (
         <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => navigate(`/t/${tableToken}/menu`)}>
-          Order more
+          Order more <ArrowRight size={15} />
         </button>
       )}
     </div>

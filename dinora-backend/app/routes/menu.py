@@ -10,7 +10,7 @@ from app.models.menu import MenuItem
 from app.routes.auth import current_admin
 from app.schemas.menu import CategoryCreate, MenuItemCreate, MenuItemUpdate
 from app.services import menu_service
-from app.services.restaurant_service import resolve_guest_restaurant_id
+from app.services.restaurant_service import resolve_guest_restaurant_id, resolve_session_restaurant_id
 
 router = APIRouter(tags=["menu"])
 
@@ -25,16 +25,27 @@ router = APIRouter(tags=["menu"])
 # ---------------------------------------------------------------------------
 
 @router.get("")
-def list_menu(restaurant_id: int | None = None, db: Session = Depends(get_db)):
-    rid = resolve_guest_restaurant_id(db, restaurant_id)
+def list_menu(
+    restaurant_id: int | None = None,
+    session_id: str | None = None,
+    db: Session = Depends(get_db),
+):
+    rid = (
+        resolve_session_restaurant_id(db, session_id)
+        if session_id is not None
+        else resolve_guest_restaurant_id(db, restaurant_id)
+    )
     return menu_service.get_menu_for_restaurant(db, rid)
 
 
 @router.get("/categories")
-def list_menu_categories(restaurant_id: int | None = None, db: Session = Depends(get_db)):
-    rid = resolve_guest_restaurant_id(db, restaurant_id)
+def list_menu_categories(
+    db: Session = Depends(get_db),
+    admin: AdminUser = Depends(current_admin),
+):
+    rid = admin.restaurant_id
     categories = menu_service.list_categories_for_restaurant(db, rid)
-    return [menu_service.serialize_category(c) for c in categories]
+    return [menu_service.serialize_category(c, c.menu_items) for c in categories]
 
 
 @router.get("/categories/{category_slug}")

@@ -6,6 +6,9 @@ import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
+import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
+import ShoppingBag from "lucide-react/dist/esm/icons/shopping-bag";
+import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 
 export default function Cart() {
   const { tableToken } = useParams();
@@ -61,7 +64,11 @@ export default function Cart() {
 
   return (
     <div className="cart-page">
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Your order</h1>
+      <div className="guest-page-heading">
+        <span className="guest-eyebrow"><ShoppingBag size={13} /> Your table order</span>
+        <h1>Almost ready<br /><em>for the kitchen.</em></h1>
+        <p>Review your picks, then send them through.</p>
+      </div>
 
       <div className="cart-items">
         {items.map((item) => (
@@ -79,14 +86,15 @@ export default function Cart() {
                 +
               </button>
             </div>
-            <button className="cart-item-remove" onClick={() => handleRemove(item)} aria-label="Remove">
-              ✕
+            <button className="cart-item-remove" onClick={() => handleRemove(item)} aria-label={`Remove ${item.name}`}>
+              <Trash2 size={15} />
             </button>
           </div>
         ))}
       </div>
 
-      <div className="card summary-card">
+      <div className="card summary-card guest-order-summary">
+        <div className="guest-summary-heading"><strong>Your summary</strong><span>Prices confirmed at checkout</span></div>
         <div className="summary-row">
           <span>Items</span>
           <span>{items.reduce((s, i) => s + i.quantity, 0)}</span>
@@ -100,7 +108,7 @@ export default function Cart() {
 
       <div className="cart-actions">
         <button className="btn btn-primary btn-block" onClick={handlePlaceOrder} disabled={placing}>
-          {placing ? <Spinner size={16} /> : `Place order · ₹${subtotal.toFixed(2)}`}
+          {placing ? <Spinner size={16} /> : <>Send order · ₹{subtotal.toFixed(2)} <ArrowRight size={16} /></>}
         </button>
         <button className="btn btn-ghost btn-block" onClick={() => navigate(`/t/${tableToken}/menu`)} disabled={placing}>
           Add more items

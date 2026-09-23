@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,9 +15,9 @@ from app.routes.orders import router as orders_router
 from app.routes.payment import router as payment_router
 from app.routes.restaurant import router as restaurant_router
 from app.routes.sessions import router as sessions_router
+from app.routes.super_admin import router as super_admin_router
 from app.routes.tables import router as tables_router
 from app.routes.websocket import router as websocket_router
-from app.services.order_automation import order_automation_loop
 
 app = FastAPI(
     title="Dinora API",
@@ -40,7 +39,7 @@ app.add_middleware(
     allow_origins=settings.CORS_ORIGINS,
     allow_origin_regex=settings.CORS_ORIGIN_REGEX,
     allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
 
@@ -62,6 +61,7 @@ _mount(payment_router, "/orders")  # adds /api/orders/{id}/pay/init, /pay/verify
 _mount(categories_router, "/categories")
 _mount(counter_router, "/counter")
 _mount(auth_router, "/auth")
+_mount(super_admin_router, "/super-admin")
 app.include_router(websocket_router)  # WebSocket paths have no /api prefix
 # Payment: previously /api/payment/checkout was unauthenticated, unused,
 # and could mark any order_id as paid with no amount verification — it was
@@ -79,19 +79,16 @@ app.include_router(websocket_router)  # WebSocket paths have no /api prefix
 
 @app.on_event("startup")
 async def _startup() -> None:
-    # Only background task — no DB mutations here.
-    app.state.order_automation_task = asyncio.create_task(order_automation_loop())
+    # Order status is staff-driven only — see routes/orders.py PATCH
+    # /api/orders/{id} and order_service.update_order_status. There is no
+    # background task advancing orders on a timer any more: a "ready" order
+    # means kitchen staff marked it ready, not that some seconds elapsed.
+    pass
 
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
-    task = getattr(app.state, "order_automation_task", None)
-    if task:
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            pass
+    pass
 
 
 # ---------------------------------------------------------------------------
@@ -151,9 +148,18 @@ def route_manifest():
             "POST /api/orders/{id}/admin-pay → record payment taken at counter, MY restaurant only (auth)",
             "GET  /api/counter           → order-status totals for MY restaurant (auth)",
             "WS   /ws/counter?token=...  → order events for MY restaurant only (auth)",
+            "GET  /api/restaurant/profile             → MY restaurant's business profile — crew size, type, seating (auth)",
+            "PUT  /api/restaurant/profile             → set MY restaurant's business profile (auth)",
             "GET  /api/restaurant/payment-settings    → whether MY restaurant has its own Razorpay configured (auth)",
             "PUT  /api/restaurant/payment-settings    → set MY restaurant's own Razorpay credentials (auth)",
             "DELETE /api/restaurant/payment-settings  → clear MY restaurant's own credentials, revert to platform fallback (auth)",
+        ],
+        "super_admin": [
+            "POST  /api/super-admin/login                       → Dinora platform operator login (NOT for restaurant owners)",
+            "GET   /api/super-admin/me                           → current super admin",
+            "GET   /api/super-admin/restaurants                  → every tenant restaurant, with owner + crew size + status",
+            "GET   /api/super-admin/restaurants/{id}             → one restaurant's full detail",
+            "PATCH /api/super-admin/restaurants/{id}             → suspend/reinstate a restaurant (body: {is_active})",
         ],
         "system": ["GET /api/health", "GET /docs"],
     }

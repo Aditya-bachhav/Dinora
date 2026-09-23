@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { animate, stagger } from "animejs";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
 import { adminApi } from "../../services/api";
 import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
@@ -8,6 +10,7 @@ import Spinner from "../../components/ui/Spinner";
 import { IconMenu } from "../../components/ui/Icons";
 
 const EMPTY_ITEM_FORM = { name: "", category_id: "", price: "", description: "", image_url: "" };
+const CATEGORY_SUGGESTIONS = ["Starters", "Main course", "Desserts", "Drinks", "Specials"];
 
 export default function MenuManager() {
   const toast = useToast();
@@ -23,6 +26,8 @@ export default function MenuManager() {
   const [itemSheetOpen, setItemSheetOpen] = useState(false);
   const [itemForm, setItemForm] = useState(EMPTY_ITEM_FORM);
   const [creatingItem, setCreatingItem] = useState(false);
+  const [editingItem, setEditingItem] = useState(null);
+  const [search, setSearch] = useState("");
 
   async function load() {
     setStatus("loading");
@@ -39,6 +44,35 @@ export default function MenuManager() {
   useEffect(() => {
     load();
   }, []);
+
+  const visibleCategories = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return categories;
+    return categories
+      .map((category) => ({
+        ...category,
+        items: category.items.filter((item) =>
+          item.name.toLowerCase().includes(query) || (item.description || "").toLowerCase().includes(query)
+        ),
+      }))
+      .filter((category) => category.items.length > 0);
+  }, [categories, search]);
+
+  useEffect(() => {
+    if (status !== "ready" || visibleCategories.length === 0) return undefined;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      document.querySelectorAll("[data-menu-item]").forEach((item) => { item.style.opacity = "1"; });
+      return undefined;
+    }
+    const animation = animate("[data-menu-item]", {
+      opacity: [0, 1],
+      translateY: [12, 0],
+      delay: stagger(45),
+      duration: 420,
+      ease: "outQuart",
+    });
+    return () => animation.cancel();
+  }, [status, visibleCategories.length, search]);
 
   async function handleCreateCategory(e) {
     e.preventDefault();
@@ -58,7 +92,20 @@ export default function MenuManager() {
   }
 
   function openItemSheet(defaultCategoryId) {
+    setEditingItem(null);
     setItemForm({ ...EMPTY_ITEM_FORM, category_id: defaultCategoryId ? String(defaultCategoryId) : "" });
+    setItemSheetOpen(true);
+  }
+
+  function openEditItem(item) {
+    setEditingItem(item);
+    setItemForm({
+      name: item.name || "",
+      category_id: String(item.category_id || ""),
+      price: String(item.price ?? ""),
+      description: item.description || "",
+      image_url: item.image_url || "",
+    });
     setItemSheetOpen(true);
   }
 
@@ -67,16 +114,21 @@ export default function MenuManager() {
     if (!itemForm.name.trim() || !itemForm.category_id) return;
     setCreatingItem(true);
     try {
-      await adminApi.createMenuItem({
+      const payload = {
         name: itemForm.name.trim(),
         category_id: parseInt(itemForm.category_id, 10),
         price: parseFloat(itemForm.price) || 0,
         description: itemForm.description.trim() || null,
         image_url: itemForm.image_url.trim() || null,
-        available: true,
-      });
+      };
+      if (editingItem) {
+        await adminApi.updateMenuItem(editingItem.id, payload);
+      } else {
+        await adminApi.createMenuItem({ ...payload, available: true });
+      }
       setItemSheetOpen(false);
-      toast.success(`${itemForm.name} added to menu`);
+      setEditingItem(null);
+      toast.success(`${itemForm.name} ${editingItem ? "updated" : "added to menu"}`);
       await load();
     } catch (err) {
       toast.error(err.detail || err.message || "Could not create menu item");
@@ -108,8 +160,18 @@ export default function MenuManager() {
 
   if (status === "loading") {
     return (
-      <div className="page-loading">
-        <Spinner size={24} />
+      <div className="admin-menu-page admin-menu-loading" aria-busy="true">
+        <div className="admin-page-head">
+          <div>
+            <div className="menu-page-kicker">MENU STUDIO</div>
+            <h1>Menu</h1>
+            <p>Loading your dishes…</p>
+          </div>
+          <div className="menu-loading-pulse" />
+        </div>
+        <div className="menu-loading-grid">
+          {Array.from({ length: 4 }).map((_, index) => <div key={index} />)}
+        </div>
       </div>
     );
   }
@@ -122,8 +184,9 @@ export default function MenuManager() {
     <div className="admin-menu-page">
       <div className="admin-page-head">
         <div>
+          <div className="menu-page-kicker"><span /> Menu studio</div>
           <h1>Menu</h1>
-          <p>Manage your categories and items</p>
+          <p>Keep every dish clear, current, and ready to order.</p>
         </div>
         <div className="admin-page-head-actions">
           <button className="btn btn-secondary btn-sm" onClick={() => setCategorySheetOpen(true)}>
@@ -133,6 +196,16 @@ export default function MenuManager() {
             + Item
           </button>
         </div>
+      </div>
+
+      <div className="menu-overview-bar">
+        <div className="menu-overview-stat"><strong>{categories.length}</strong><span>categories</span></div>
+        <div className="menu-overview-stat"><strong>{categories.reduce((sum, category) => sum + category.items.length, 0)}</strong><span>dishes</span></div>
+        <div className="menu-overview-stat"><strong>{categories.reduce((sum, category) => sum + category.items.filter((item) => item.available).length, 0)}</strong><span>available now</span></div>
+        <label className="menu-search-field">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" placeholder="Find a dish" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Find a dish" />
+        </label>
       </div>
 
       {categories.length === 0 ? (
@@ -147,9 +220,14 @@ export default function MenuManager() {
           }
         />
       ) : (
-        categories.map((category) => (
+        visibleCategories.length === 0 ? (
+          <EmptyState icon="⌕" title="No dishes found" message="Try another dish name or description." />
+        ) : visibleCategories.map((category) => (
           <div key={category.id} className="admin-category-block">
-            <h3>{category.name}</h3>
+            <div className="menu-category-heading">
+              <div><span className="menu-category-index">{String(categories.findIndex((entry) => entry.id === category.id) + 1).padStart(2, "0")}</span><h3>{category.name}</h3></div>
+              <button className="menu-add-inline" onClick={() => openItemSheet(category.id)}>+ Add dish</button>
+            </div>
             {category.items.length === 0 ? (
               <EmptyState
                 icon="🍽️"
@@ -161,25 +239,24 @@ export default function MenuManager() {
                 }
               />
             ) : (
-              category.items.map((item) => (
-                <div key={item.id} className="menu-item-row">
-                  <div className="menu-item-row-info">
-                    <strong>{item.name}</strong>
-                    <span>₹{item.price.toFixed(2)}</span>
-                  </div>
-                  <div className="menu-item-row-actions">
-                    <button
-                      className={`availability-toggle ${item.available ? "available" : "unavailable"}`}
-                      onClick={() => handleToggleAvailable(item)}
-                    >
-                      {item.available ? "Available" : "Hidden"}
-                    </button>
-                    <button className="icon-btn-sm" onClick={() => handleDeleteItem(item)} aria-label="Delete">
-                      ✕
-                    </button>
+              <div className="menu-dish-grid">
+                {category.items.map((item) => (
+                <div key={item.id} className="menu-dish-card" data-menu-item>
+                  {item.image_url ? <img src={item.image_url} alt="" className="menu-dish-image" /> : <div className="menu-dish-image menu-dish-placeholder">{item.name.charAt(0).toUpperCase()}</div>}
+                  <div className="menu-dish-body">
+                    <div className="menu-dish-title-row"><strong>{item.name}</strong><span>₹{Number(item.price).toFixed(2)}</span></div>
+                    {item.description && <p>{item.description}</p>}
+                    <div className="menu-dish-actions">
+                      <button className={`availability-toggle ${item.available ? "available" : "unavailable"}`} onClick={() => handleToggleAvailable(item)}>
+                        {item.available ? "Available" : "Hidden"}
+                      </button>
+                      <button className="icon-btn-sm menu-edit-button" onClick={() => openEditItem(item)} aria-label={`Edit ${item.name}`}><Pencil size={14} /></button>
+                      <button className="icon-btn-sm" onClick={() => handleDeleteItem(item)} aria-label={`Delete ${item.name}`}>✕</button>
+                    </div>
                   </div>
                 </div>
-              ))
+                ))}
+              </div>
             )}
           </div>
         ))
@@ -189,6 +266,18 @@ export default function MenuManager() {
         <form className="stacked-form" onSubmit={handleCreateCategory}>
           <div className="field">
             <label>Category name</label>
+            <div className="category-suggestion-chips" aria-label="Suggested categories">
+              {CATEGORY_SUGGESTIONS.map((suggestion) => (
+                <button
+                  key={suggestion}
+                  type="button"
+                  className={`category-suggestion-chip ${newCategoryName === suggestion ? "selected" : ""}`}
+                  onClick={() => setNewCategoryName(suggestion)}
+                >
+                  + {suggestion}
+                </button>
+              ))}
+            </div>
             <input
               placeholder="e.g. Desserts"
               value={newCategoryName}
@@ -203,8 +292,15 @@ export default function MenuManager() {
         </form>
       </Sheet>
 
-      <Sheet open={itemSheetOpen} onClose={() => setItemSheetOpen(false)} title="Add menu item">
-        <form className="stacked-form" onSubmit={handleCreateItem}>
+      <Sheet open={itemSheetOpen} onClose={() => { setItemSheetOpen(false); setEditingItem(null); }} title={editingItem ? "Edit menu item" : "Add menu item"}>
+        <form className="stacked-form menu-item-sheet-form" onSubmit={handleCreateItem}>
+          <div className="menu-item-sheet-intro">
+            <span className="menu-item-sheet-mark">+</span>
+            <div>
+              <strong>Add a dish to your menu</strong>
+              <span>Give guests the details they need to choose quickly.</span>
+            </div>
+          </div>
           <div className="field">
             <label>Name</label>
             <input value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} required />
@@ -239,7 +335,8 @@ export default function MenuManager() {
           </div>
           <div className="field">
             <label>Description (optional)</label>
-            <input
+            <textarea
+              rows="3"
               value={itemForm.description}
               onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
             />
@@ -252,7 +349,7 @@ export default function MenuManager() {
             />
           </div>
           <button type="submit" className="btn btn-primary btn-block" disabled={creatingItem}>
-            {creatingItem ? <Spinner size={16} /> : "Add item"}
+            {creatingItem ? <Spinner size={16} /> : editingItem ? "Save changes" : "Add item"}
           </button>
         </form>
       </Sheet>

@@ -92,7 +92,8 @@ export default function AdminGuard({ children }) {
   }
 
   const onOnboardingRoute = location.pathname.startsWith("/admin/onboarding");
-  if (!onOnboardingRoute && needsOnboarding) {
+  const onboardingComplete = isOnboardingComplete(admin?.id);
+  if (!onOnboardingRoute && needsOnboarding && !onboardingComplete) {
     return <Navigate to="/admin/onboarding" replace />;
   }
 

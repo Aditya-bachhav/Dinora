@@ -8,7 +8,7 @@ another restaurant's categories or menu items.
 from __future__ import annotations
 
 from fastapi import HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.category import Category
 from app.models.menu import MenuItem
@@ -74,6 +74,7 @@ def get_menu_for_restaurant(db: Session, restaurant_id: int) -> dict:
 def list_categories_for_restaurant(db: Session, restaurant_id: int) -> list[Category]:
     return (
         db.query(Category)
+        .options(selectinload(Category.menu_items))
         .filter(Category.restaurant_id == restaurant_id)
         .order_by(Category.id.asc())
         .all()

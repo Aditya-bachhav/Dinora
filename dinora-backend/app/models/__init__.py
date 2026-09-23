@@ -6,4 +6,5 @@ from app.models.order_item import OrderItem
 from app.models.payment import Payment
 from app.models.restaurant import Restaurant
 from app.models.session import DiningSession
+from app.models.super_admin import SuperAdminUser
 from app.models.table import Table

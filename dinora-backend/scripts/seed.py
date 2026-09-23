@@ -7,10 +7,16 @@ from app.models.admin import AdminUser
 from app.models.category import Category
 from app.models.menu import MenuItem
 from app.models.restaurant import Restaurant
+from app.models.super_admin import SuperAdminUser
 from app.core.security import hash_password
 
 DEMO_ADMIN_EMAIL = os.getenv("DINORA_SEED_ADMIN_EMAIL", "admin@dinora.demo")
 DEMO_ADMIN_PASSWORD = os.getenv("DINORA_SEED_ADMIN_PASSWORD", "dinora-demo-admin-123")
+
+# Super admin — Dinora's own platform operator, not a restaurant account.
+# See app/models/super_admin.py for why this is a wholly separate table.
+DEMO_SUPERADMIN_EMAIL = os.getenv("DINORA_SEED_SUPERADMIN_EMAIL", "superadmin@dinora.platform")
+DEMO_SUPERADMIN_PASSWORD = os.getenv("DINORA_SEED_SUPERADMIN_PASSWORD", "dinora-demo-superadmin-123")
 
 
 def seed() -> None:
@@ -20,7 +26,13 @@ def seed() -> None:
     try:
         restaurant = db.query(Restaurant).filter(Restaurant.name == "Dinora Demo Restaurant").first()
         if restaurant is None:
-            restaurant = Restaurant(name="Dinora Demo Restaurant", location="Mumbai")
+            restaurant = Restaurant(
+                name="Dinora Demo Restaurant",
+                location="Mumbai",
+                restaurant_type="casual_dining",
+                crew_size=8,
+                seating_capacity=45,
+            )
             db.add(restaurant)
             db.flush()
 
@@ -63,6 +75,17 @@ def seed() -> None:
         db.commit()
         print(f"Seeded restaurant '{restaurant.name}' (id={restaurant.id}).")
         print(f"Demo admin login -> email: {DEMO_ADMIN_EMAIL}  password: {DEMO_ADMIN_PASSWORD}")
+
+        superadmin = db.query(SuperAdminUser).filter(SuperAdminUser.email == DEMO_SUPERADMIN_EMAIL).first()
+        if superadmin is None:
+            superadmin = SuperAdminUser(
+                name="Dinora Platform Admin",
+                email=DEMO_SUPERADMIN_EMAIL,
+                password_hash=hash_password(DEMO_SUPERADMIN_PASSWORD),
+            )
+            db.add(superadmin)
+            db.commit()
+        print(f"Demo super admin login -> email: {DEMO_SUPERADMIN_EMAIL}  password: {DEMO_SUPERADMIN_PASSWORD}")
     finally:
         db.close()
 

@@ -89,6 +89,10 @@ export default function AdminLayout() {
       </header>
 
       <main className="admin-content">
+        <div className="admin-content-kicker" aria-hidden="true">
+          <span className="admin-content-kicker-dot" />
+          Live workspace
+        </div>
         <Outlet />
       </main>
 

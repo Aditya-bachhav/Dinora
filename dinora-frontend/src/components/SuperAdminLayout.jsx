@@ -20,7 +20,7 @@ export default function SuperAdminLayout() {
       <header className="superadmin-topbar">
         <div className="superadmin-topbar-inner">
           <div className="superadmin-brand-wrap">
-            <div className="superadmin-brand-mark" aria-hidden="true">D</div>
+            <img className="superadmin-brand-mark logo-image" src="https://res.cloudinary.com/dtczjdk8l/image/upload/v1790181227/logowithoutbg.png" alt="" />
             <div className="superadmin-brand-text">
               <span className="superadmin-brand-name">Dinora</span>
               <span className="superadmin-brand-subtitle">Platform</span>

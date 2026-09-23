@@ -46,9 +46,6 @@ export default function Register() {
     try {
       await register(name, email, password, restaurantName);
       toast.success("Account created");
-      // New admins land in the onboarding wizard (payment setup + first
-      // table) rather than straight into an empty dashboard — see
-      // pages/admin/Onboarding.jsx and AdminGuard's completeness check.
       navigate("/admin/onboarding", { replace: true });
     } catch (err) {
       setError(err.detail || err.message || "Registration failed");
@@ -58,68 +55,160 @@ export default function Register() {
   }
 
   return (
-    <main className="login-page register-page" ref={pageRef}>
-      <section className="login-story" aria-label="Dinora restaurant operations">
-        <div className="login-story-top" data-register-reveal>
-          <Link className="login-logo" to="/" aria-label="Dinora home">
-            <span className="login-logo-mark" aria-hidden="true">D</span>
-            <span>Dinora</span>
+    <main className="flex min-h-screen w-full bg-background text-foreground" ref={pageRef}>
+      {/* Promo / Branding Panel (Left) */}
+      <section
+        className="hidden lg:flex w-1/2 flex-col justify-between border-r border-sidebar-border bg-sidebar p-12 text-sidebar-foreground"
+        aria-label="Dinora restaurant operations"
+      >
+        <div className="flex items-center justify-between" data-register-reveal>
+          <Link className="flex items-center gap-3 font-bold tracking-tight text-sidebar-foreground" to="/" aria-label="Dinora home">
+            <img className="h-8 w-auto object-contain" src="https://res.cloudinary.com/dtczjdk8l/image/upload/v1790181227/logowithoutbg.png" alt="" />
+            <span className="text-xl">Dinora</span>
           </Link>
-          <span className="login-status"><span />Your next chapter</span>
+          <span className="inline-flex items-center gap-2 border border-sidebar-border bg-sidebar-accent/50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground">
+            <span className="h-2 w-2 bg-emerald-500 animate-pulse" />
+            Your next chapter
+          </span>
         </div>
 
-        <div className="login-story-copy" data-register-reveal>
-          <p className="login-eyebrow"><Utensils size={15} /> Restaurant OS</p>
-          <h1>Give your service<br /><em>room to shine.</em></h1>
-          <p>Set up one calm workspace for every table, order, dish, and moment that makes your restaurant yours.</p>
+        <div className="my-auto max-w-md space-y-6" data-register-reveal>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sidebar-primary">
+            <Utensils size={15} /> Restaurant OS
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight leading-tight">
+            Give your service<br />
+            <em className="font-serif italic font-normal text-sidebar-primary">room to shine.</em>
+          </h1>
+          <p className="text-base text-sidebar-foreground/80 leading-relaxed">
+            Set up one calm workspace for every table, order, dish, and moment that makes your restaurant yours.
+          </p>
         </div>
 
-        <div className="login-story-footer" data-register-reveal>
+        <div className="flex items-center justify-between border-t border-sidebar-border pt-6 text-xs font-medium text-sidebar-foreground/60" data-register-reveal>
           <span>Built for the rhythm of hospitality</span>
           <ArrowUpRight size={18} aria-hidden="true" />
         </div>
       </section>
 
-      <section className="login-panel register-panel">
-        <div className="login-form-wrap">
-          <div className="login-form-heading" data-register-reveal>
-            <p className="login-form-kicker">Start your workspace</p>
-            <h2>Set up your restaurant</h2>
-            <p>Create your admin account and make your next service feel effortless.</p>
+      {/* Form Panel (Right) */}
+      <section className="flex flex-1 flex-col justify-center items-center p-6 sm:p-12 lg:p-16">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile Logo */}
+          <div className="flex items-center gap-3 lg:hidden" data-register-reveal>
+            <img className="h-8 w-auto object-contain" src="https://res.cloudinary.com/dtczjdk8l/image/upload/v1790181227/logowithoutbg.png" alt="" />
+            <span className="text-xl font-bold tracking-tight text-foreground">Dinora</span>
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form register-form" data-register-reveal>
-            <div className="login-field">
-              <label htmlFor="restaurantName">Restaurant name</label>
-              <Input id="restaurantName" placeholder="e.g. Spice Route Kitchen" value={restaurantName} onChange={(e) => setRestaurantName(e.target.value)} required />
+          <div className="space-y-2" data-register-reveal>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Start your workspace</p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Set up your restaurant</h2>
+            <p className="text-sm text-muted-foreground">Create your admin account and make your next service feel effortless.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4" data-register-reveal>
+            <div className="space-y-1.5">
+              <label htmlFor="restaurantName" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                Restaurant name
+              </label>
+              <Input
+                id="restaurantName"
+                placeholder="e.g. Spice Route Kitchen"
+                value={restaurantName}
+                onChange={(e) => setRestaurantName(e.target.value)}
+                required
+                className="h-10 bg-background border-input"
+              />
             </div>
-            <div className="login-field">
-              <label htmlFor="name">Your name</label>
-              <Input id="name" placeholder="The person running the floor" value={name} onChange={(e) => setName(e.target.value)} required />
+
+            <div className="space-y-1.5">
+              <label htmlFor="name" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                Your name
+              </label>
+              <Input
+                id="name"
+                placeholder="The person running the floor"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                className="h-10 bg-background border-input"
+              />
             </div>
-            <div className="login-field">
-              <label htmlFor="email">Work email</label>
-              <Input id="email" type="email" autoComplete="email" placeholder="you@restaurant.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
+
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                Work email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="email"
+                placeholder="you@restaurant.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="h-10 bg-background border-input"
+              />
             </div>
-            <div className="login-field">
-              <label htmlFor="password">Password</label>
-              <div className="login-password-input">
-                <Input id="password" type={showPassword ? "text" : "password"} autoComplete="new-password" placeholder="At least 8 characters" value={password} onChange={(e) => setPassword(e.target.value)} minLength={8} required />
-                <button type="button" className="login-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>
+
+            <div className="space-y-1.5">
+              <label htmlFor="password" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                Password
+              </label>
+              <div className="relative flex items-center">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="At least 8 characters"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  minLength={8}
+                  required
+                  className="h-10 pr-10 bg-background border-input"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 h-10 w-10 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                </Button>
               </div>
             </div>
-            {error && <p className="login-error" role="alert"><LockKeyhole size={15} />{error}</p>}
-            <Button type="submit" className="login-submit" disabled={submitting}>
-              {submitting ? <Spinner size={16} /> : <>Create workspace <ArrowUpRight size={17} /></>}
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20" role="alert">
+                <LockKeyhole size={15} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-10 font-semibold gap-2 mt-2" disabled={submitting}>
+              {submitting ? (
+                <Spinner size={16} />
+              ) : (
+                <>
+                  Create workspace <ArrowUpRight size={17} />
+                </>
+              )}
             </Button>
           </form>
 
-          <p className="login-register" data-register-reveal>
-            Already have an account? <Link to="/admin/login">Sign in <ArrowUpRight size={14} /></Link>
-          </p>
-          <p className="login-legal" data-register-reveal>By continuing, you agree to Dinora's terms and privacy policy.</p>
+          <div className="space-y-3 text-center" data-register-reveal>
+            <p className="text-xs text-muted-foreground">
+              Already have an account?{" "}
+              <Link to="/admin/login" className="font-semibold text-foreground hover:underline inline-flex items-center gap-0.5">
+                Sign in <ArrowUpRight size={14} />
+              </Link>
+            </p>
+            <p className="text-[11px] text-muted-foreground/70">
+              By continuing, you agree to Dinora's terms and privacy policy.
+            </p>
+          </div>
         </div>
       </section>
     </main>

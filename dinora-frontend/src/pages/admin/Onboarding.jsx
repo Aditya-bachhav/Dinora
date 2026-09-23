@@ -5,6 +5,10 @@ import { useAdminAuth } from "../../context/AdminAuthContext";
 import { useToast } from "../../context/ToastContext";
 import { adminApi, markOnboardingComplete } from "../../services/api";
 import Spinner from "../../components/ui/Spinner";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select } from "../../components/ui/select";
 import { IconCard, IconInfo, IconCheck, IconArrowRight, IconSkip } from "../../components/ui/Icons";
 
 const TOTAL_STEPS = 3;
@@ -29,8 +33,7 @@ export default function Onboarding() {
   const [submitting, setSubmitting] = useState(false);
   const [leaving, setLeaving] = useState(false);
 
-  // Step 1 — business details, so the owner (and Dinora) has a real
-  // picture of the restaurant on file, not just its name.
+  // Step 1 — business details
   const [crewSize, setCrewSize] = useState("");
   const [restaurantType, setRestaurantType] = useState("");
   const [seatingCapacity, setSeatingCapacity] = useState("");
@@ -60,9 +63,6 @@ export default function Onboarding() {
     return () => animation.revert();
   }, [step]);
 
-  // Onboarding is done — go straight to the dashboard, no extra confirm
-  // click. Called automatically (with a short beat so the "done" state is
-  // actually visible) or immediately for the explicit skip actions.
   function finish() {
     markOnboardingComplete(admin?.id);
     navigate("/admin/orders", { replace: true });
@@ -140,217 +140,337 @@ export default function Onboarding() {
   }
 
   return (
-    <main className="onboarding-page" ref={pageRef}>
-      <section className="onboarding-story" data-onboarding-reveal aria-label="Dinora restaurant operations">
-        <div className="onboarding-story-top">
-          <div className="onboarding-brand">
-            <div className="onboarding-brand-mark" aria-hidden="true">D</div>
-            <span className="onboarding-brand-name">Dinora</span>
+    <main className="flex min-h-screen w-full bg-background text-foreground" ref={pageRef}>
+      {/* Branding / Story Panel (Left) */}
+      <section
+        className="hidden lg:flex w-1/2 flex-col justify-between border-r border-sidebar-border bg-sidebar p-12 text-sidebar-foreground"
+        data-onboarding-reveal
+        aria-label="Dinora restaurant operations"
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3 font-bold tracking-tight text-sidebar-foreground">
+            <div className="flex h-8 w-8 items-center justify-center bg-sidebar-primary text-sidebar-primary-foreground font-bold text-lg" aria-hidden="true">
+              D
+            </div>
+            <span className="text-xl">Dinora</span>
           </div>
-          <span className="onboarding-story-status"><span />Almost there</span>
+          <span className="inline-flex items-center gap-2 border border-sidebar-border bg-sidebar-accent/50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground">
+            <span className="h-2 w-2 bg-emerald-500 animate-pulse" />
+            Almost there
+          </span>
         </div>
-        <div className="onboarding-story-copy">
-          <p>RESTAURANT OS</p>
-          <h1>Make your<br /><em>first service</em> count.</h1>
-          <span>Three quick steps to shape your workspace, connect payments, and put your first table on the floor.</span>
+
+        <div className="my-auto max-w-md space-y-6">
+          <p className="text-xs font-semibold uppercase tracking-wider text-sidebar-primary">
+            Restaurant OS
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight leading-tight">
+            Make your<br />
+            <em className="font-serif italic font-normal text-sidebar-primary">first service</em> count.
+          </h1>
+          <p className="text-base text-sidebar-foreground/80 leading-relaxed">
+            Three quick steps to shape your workspace, connect payments, and put your first table on the floor.
+          </p>
         </div>
-        <div className="onboarding-story-footer">Built for the rhythm of hospitality</div>
+
+        <div className="border-t border-sidebar-border pt-6 text-xs font-medium text-sidebar-foreground/60">
+          Built for the rhythm of hospitality
+        </div>
       </section>
 
-      <section className="onboarding-workspace">
-      <div className="onboarding-header" data-onboarding-reveal>
-        <div className="onboarding-progress-label">Workspace setup <strong>0{step}</strong> / 03</div>
-        <div className="onboarding-steps">
-          {[1, 2, 3].map((n) => (
-            <div key={n} className={`onboarding-step-dot ${n < step ? "done" : n === step ? "active" : ""}`} />
-          ))}
+      {/* Steps / Form Workspace (Right) */}
+      <section className="flex flex-1 flex-col justify-between p-6 sm:p-12 lg:p-16 max-w-2xl mx-auto w-full">
+        {/* Step Progress Header */}
+        <div className="space-y-4" data-onboarding-reveal>
+          <div className="flex items-center justify-between">
+            <span className="text-xs uppercase tracking-wider font-semibold text-muted-foreground">
+              Workspace setup <strong className="text-foreground">0{step}</strong> / 03
+            </span>
+            <div className="flex items-center gap-1.5">
+              {[1, 2, 3].map((n) => (
+                <div
+                  key={n}
+                  className={`h-1.5 w-8 transition-colors ${
+                    n < step
+                      ? "bg-emerald-500"
+                      : n === step
+                      ? "bg-primary"
+                      : "bg-muted"
+                  }`}
+                />
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="onboarding-body" data-onboarding-reveal>
-        {step === 1 && (
-          <>
-            <div className="onboarding-step-label">Step 1 of {TOTAL_STEPS}</div>
-            <h1 className="onboarding-title">Tell us about your restaurant</h1>
-            <p className="onboarding-subtitle">Just the basics — you can change these any time in Settings.</p>
+        {/* Step Body */}
+        <div className="my-auto py-8 space-y-6" data-onboarding-reveal>
+          {/* STEP 1 */}
+          {step === 1 && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Step 1 of {TOTAL_STEPS}
+                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Tell us about your restaurant
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Just the basics — you can change these any time in Settings.
+                </p>
+              </div>
 
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="crewSize">Crew size</label>
-              <input
-                id="crewSize"
-                type="number"
-                min="1"
-                placeholder="e.g. 6"
-                value={crewSize}
-                onChange={(e) => setCrewSize(e.target.value)}
-                autoFocus
-              />
-              <small>Everyone working here day to day — kitchen, floor, and you.</small>
-            </div>
-
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="restaurantType">Restaurant type</label>
-              <select
-                id="restaurantType"
-                value={restaurantType}
-                onChange={(e) => setRestaurantType(e.target.value)}
-              >
-                <option value="">Select one (optional)</option>
-                {RESTAURANT_TYPES.map((t) => (
-                  <option key={t.value} value={t.value}>{t.label}</option>
-                ))}
-              </select>
-            </div>
-
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="seatingCapacity">Seating capacity</label>
-              <input
-                id="seatingCapacity"
-                type="number"
-                min="1"
-                placeholder="e.g. 40 (optional)"
-                value={seatingCapacity}
-                onChange={(e) => setSeatingCapacity(e.target.value)}
-              />
-            </div>
-
-            {profileError && <p className="form-error" style={{ marginBottom: "var(--space-4)" }}>{profileError}</p>}
-          </>
-        )}
-
-        {step === 2 && (
-          <>
-            <div className="onboarding-step-label">Step 2 of {TOTAL_STEPS}</div>
-            <h1 className="onboarding-title">Get paid directly</h1>
-            <p className="onboarding-subtitle">Connect Razorpay so payments go straight to your bank. Skip this and do it later if you want.</p>
-
-            {!paymentChoice && (
-              <>
-                <button className="onboarding-option-card" onClick={() => setPaymentChoice("own")}>
-                  <div className="onboarding-option-icon">
-                    <span className="icon"><IconCard /></span>
-                  </div>
-                  <div className="onboarding-option-text">
-                    <strong>Connect my Razorpay account</strong>
-                    <span>Payments settle directly to your restaurant's bank account</span>
-                  </div>
-                </button>
-                <button className="onboarding-option-card" onClick={() => goToStep(3)}>
-                  <div className="onboarding-option-icon">
-                    <span className="icon"><IconSkip /></span>
-                  </div>
-                  <div className="onboarding-option-text">
-                    <strong>Set this up later</strong>
-                    <span>You can add your payment details any time from Settings</span>
-                  </div>
-                </button>
-              </>
-            )}
-
-            {paymentChoice === "own" && (
-              <>
-                <div className="credential-callout">
-                  <span className="icon"><IconInfo /></span>
-                  <p>
-                    Find your Key ID and Key Secret in your Razorpay Dashboard under Settings → API
-                    Keys. Your key secret is encrypted before it's stored — Dinora never displays it
-                    again once saved.
-                  </p>
-                </div>
-                <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-                  <label htmlFor="keyId">Razorpay Key ID</label>
-                  <input
-                    id="keyId"
-                    placeholder="rzp_live_xxxxxxxxxxxx"
-                    value={keyId}
-                    onChange={(e) => setKeyId(e.target.value)}
-                    autoFocus
-                  />
-                </div>
-                <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-                  <label htmlFor="keySecret">Razorpay Key Secret</label>
-                  <input
-                    id="keySecret"
-                    type="password"
-                    placeholder="Your key secret"
-                    value={keySecret}
-                    onChange={(e) => setKeySecret(e.target.value)}
-                  />
-                </div>
-                {paymentError && <p className="form-error" style={{ marginBottom: "var(--space-4)" }}>{paymentError}</p>}
-                <button className="btn btn-ghost btn-block" style={{ marginBottom: "var(--space-3)" }} onClick={() => setPaymentChoice(null)}>
-                  ← Back
-                </button>
-              </>
-            )}
-          </>
-        )}
-
-        {step === 3 && (
-          <>
-            <div className="onboarding-step-label">Step 3 of {TOTAL_STEPS}</div>
-            <h1 className="onboarding-title">Set up your tables</h1>
-            <p className="onboarding-subtitle">Tell us how many tables you have. Dinora will create numbered QR-ready tables from 1 to your count.</p>
-
-            {!tableCreated ? (
-              <>
-                <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-                  <label htmlFor="tableCount">Number of tables</label>
-                  <input
-                    id="tableCount"
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="crewSize" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                    Crew size
+                  </Label>
+                  <Input
+                    id="crewSize"
                     type="number"
                     min="1"
-                    value={tableCount}
-                    onChange={(e) => setTableCount(e.target.value)}
+                    placeholder="e.g. 6"
+                    value={crewSize}
+                    onChange={(e) => setCrewSize(e.target.value)}
                     autoFocus
+                    className="h-10 bg-background border-input"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Everyone working here day to day — kitchen, floor, and you.
+                  </p>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="restaurantType" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                    Restaurant type
+                  </Label>
+                  <Select
+                    id="restaurantType"
+                    value={restaurantType}
+                    onChange={(e) => setRestaurantType(e.target.value)}
+                    className="h-10 w-full bg-background border border-input text-sm px-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="">Select one (optional)</option>
+                    {RESTAURANT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="seatingCapacity" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                    Seating capacity
+                  </Label>
+                  <Input
+                    id="seatingCapacity"
+                    type="number"
+                    min="1"
+                    placeholder="e.g. 40 (optional)"
+                    value={seatingCapacity}
+                    onChange={(e) => setSeatingCapacity(e.target.value)}
+                    className="h-10 bg-background border-input"
                   />
                 </div>
-                {tableError && <p className="form-error" style={{ marginBottom: "var(--space-4)" }}>{tableError}</p>}
-              </>
-            ) : (
-              <div className="onboarding-summary-card" style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <div className="onboarding-option-icon" style={{ background: "var(--color-success-soft)", color: "var(--color-success)" }}>
-                  <span className="icon"><IconCheck /></span>
+
+                {profileError && (
+                  <p className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 p-3" role="alert">
+                    {profileError}
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2 */}
+          {step === 2 && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Step 2 of {TOTAL_STEPS}
+                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Get paid directly
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Connect Razorpay so payments go straight to your bank. Skip this and do it later if you want.
+                </p>
+              </div>
+
+              {!paymentChoice && (
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="w-full border border-border p-4 text-left hover:bg-accent/50 transition-colors flex items-start gap-4 group"
+                    onClick={() => setPaymentChoice("own")}
+                  >
+                    <div className="p-2 border border-border bg-background text-foreground shrink-0 group-hover:border-primary">
+                      <IconCard />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Connect my Razorpay account</p>
+                      <p className="text-xs text-muted-foreground">Payments settle directly to your restaurant's bank account</p>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="w-full border border-border p-4 text-left hover:bg-accent/50 transition-colors flex items-start gap-4 group"
+                    onClick={() => goToStep(3)}
+                  >
+                    <div className="p-2 border border-border bg-background text-foreground shrink-0 group-hover:border-primary">
+                      <IconSkip />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-foreground">Set this up later</p>
+                      <p className="text-xs text-muted-foreground">You can add your payment details any time from Settings</p>
+                    </div>
+                  </button>
                 </div>
-                <div>
-                  <strong style={{ fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 700 }}>
-                    {tableCount} {Number(tableCount) === 1 ? "table" : "tables"} created
-                  </strong>
-                  <div style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--color-text-muted)" }}>
-                    Taking you to your dashboard…
+              )}
+
+              {paymentChoice === "own" && (
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 p-4 bg-muted/40 border border-border text-xs text-muted-foreground">
+                    <div className="shrink-0 pt-0.5 text-foreground">
+                      <IconInfo />
+                    </div>
+                    <p className="leading-relaxed">
+                      Find your Key ID and Key Secret in your Razorpay Dashboard under Settings → API Keys.
+                      Your key secret is encrypted before it's stored — Dinora never displays it again once saved.
+                    </p>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="keyId" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                      Razorpay Key ID
+                    </Label>
+                    <Input
+                      id="keyId"
+                      placeholder="rzp_live_xxxxxxxxxxxx"
+                      value={keyId}
+                      onChange={(e) => setKeyId(e.target.value)}
+                      autoFocus
+                      className="h-10 bg-background border-input"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="keySecret" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                      Razorpay Key Secret
+                    </Label>
+                    <Input
+                      id="keySecret"
+                      type="password"
+                      placeholder="Your key secret"
+                      value={keySecret}
+                      onChange={(e) => setKeySecret(e.target.value)}
+                      className="h-10 bg-background border-input"
+                    />
+                  </div>
+
+                  {paymentError && (
+                    <p className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 p-3" role="alert">
+                      {paymentError}
+                    </p>
+                  )}
+
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start px-0 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() => setPaymentChoice(null)}
+                  >
+                    ← Back
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* STEP 3 */}
+          {step === 3 && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  Step 3 of {TOTAL_STEPS}
+                </p>
+                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                  Set up your tables
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Tell us how many tables you have. Dinora will create numbered QR-ready tables from 1 to your count.
+                </p>
+              </div>
+
+              {!tableCreated ? (
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="tableCount" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                      Number of tables
+                    </Label>
+                    <Input
+                      id="tableCount"
+                      type="number"
+                      min="1"
+                      value={tableCount}
+                      onChange={(e) => setTableCount(e.target.value)}
+                      autoFocus
+                      className="h-10 bg-background border-input"
+                    />
+                  </div>
+
+                  {tableError && (
+                    <p className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 p-3" role="alert">
+                      {tableError}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="flex items-center gap-4 p-4 border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <div className="flex h-10 w-10 items-center justify-center bg-emerald-500/20 shrink-0">
+                    <IconCheck />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">
+                      {tableCount} {Number(tableCount) === 1 ? "table" : "tables"} created
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Taking you to your dashboard…
+                    </p>
                   </div>
                 </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
+              )}
+            </div>
+          )}
+        </div>
 
-      <div className="onboarding-footer" data-onboarding-reveal>
-        {step === 1 ? (
-          <button className="btn btn-primary" onClick={handleSaveProfile} disabled={submitting}>
-            {submitting ? <Spinner size={16} /> : "Continue"}
-            {!submitting && <span className="icon" style={{ width: 16, height: 16 }}><IconArrowRight /></span>}
-          </button>
-        ) : step === 2 && paymentChoice === "own" ? (
-          <button className="btn btn-primary" onClick={handleSavePayment} disabled={submitting}>
-            {submitting ? <Spinner size={16} /> : "Connect account"}
-          </button>
-        ) : step === 3 && !tableCreated ? (
-          <>
-            <button className="btn btn-ghost" onClick={() => finishWithDelay(0)} disabled={submitting || leaving}>
-              Skip for now
-            </button>
-            <button className="btn btn-primary" onClick={handleCreateTable} disabled={submitting || leaving}>
-              {submitting ? <Spinner size={16} /> : "Create table"}
-            </button>
-          </>
-        ) : step === 3 && tableCreated ? (
-          <button className="btn btn-primary" disabled>
-            <Spinner size={16} />
-          </button>
-        ) : null}
-      </div>
+        {/* Action Controls Footer */}
+        <div className="flex items-center justify-end gap-3 border-t border-border pt-6" data-onboarding-reveal>
+          {step === 1 ? (
+            <Button className="font-semibold gap-2 min-w-[120px]" onClick={handleSaveProfile} disabled={submitting}>
+              {submitting ? <Spinner size={16} /> : "Continue"}
+              {!submitting && <IconArrowRight />}
+            </Button>
+          ) : step === 2 && paymentChoice === "own" ? (
+            <Button className="font-semibold min-w-[140px]" onClick={handleSavePayment} disabled={submitting}>
+              {submitting ? <Spinner size={16} /> : "Connect account"}
+            </Button>
+          ) : step === 3 && !tableCreated ? (
+            <>
+              <Button variant="ghost" onClick={() => finishWithDelay(0)} disabled={submitting || leaving}>
+                Skip for now
+              </Button>
+              <Button className="font-semibold min-w-[120px]" onClick={handleCreateTable} disabled={submitting || leaving}>
+                {submitting ? <Spinner size={16} /> : "Create table"}
+              </Button>
+            </>
+          ) : step === 3 && tableCreated ? (
+            <Button disabled className="min-w-[120px]">
+              <Spinner size={16} />
+            </Button>
+          ) : null}
+        </div>
       </section>
     </main>
   );

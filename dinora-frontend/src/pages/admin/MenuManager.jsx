@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { animate, stagger } from "animejs";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
 import { adminApi } from "../../services/api";
@@ -8,6 +8,11 @@ import Sheet from "../../components/ui/Sheet";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
 import { IconMenu } from "../../components/ui/Icons";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select } from "../../components/ui/select";
+import { Textarea } from "../../components/ui/textarea";
 
 const EMPTY_ITEM_FORM = { name: "", category_id: "", price: "", description: "", image_url: "" };
 const CATEGORY_SUGGESTIONS = ["Starters", "Main course", "Desserts", "Drinks", "Specials"];
@@ -29,7 +34,7 @@ export default function MenuManager() {
   const [editingItem, setEditingItem] = useState(null);
   const [search, setSearch] = useState("");
 
-  async function load() {
+  const load = useCallback(async () => {
     setStatus("loading");
     try {
       const list = await adminApi.listCategories();
@@ -39,11 +44,11 @@ export default function MenuManager() {
       setStatus("error");
       setError(err.detail || err.message || "Could not load menu");
     }
-  }
+  }, []);
 
   useEffect(() => {
     load();
-  }, []);
+  }, [load]);
 
   const visibleCategories = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -51,27 +56,33 @@ export default function MenuManager() {
     return categories
       .map((category) => ({
         ...category,
-        items: category.items.filter((item) =>
-          item.name.toLowerCase().includes(query) || (item.description || "").toLowerCase().includes(query)
+        items: category.items.filter(
+          (item) =>
+            item.name.toLowerCase().includes(query) || (item.description || "").toLowerCase().includes(query)
         ),
       }))
       .filter((category) => category.items.length > 0);
   }, [categories, search]);
 
   useEffect(() => {
-    if (status !== "ready" || visibleCategories.length === 0) return undefined;
+    if (status !== "ready" || visibleCategories.length === 0) return;
+
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      document.querySelectorAll("[data-menu-item]").forEach((item) => { item.style.opacity = "1"; });
-      return undefined;
+      document.querySelectorAll("[data-menu-item]").forEach((item) => {
+        item.style.opacity = "1";
+      });
+      return;
     }
-    const animation = animate("[data-menu-item]", {
+
+    const anim = animate("[data-menu-item]", {
       opacity: [0, 1],
       translateY: [12, 0],
       delay: stagger(45),
       duration: 420,
-      ease: "outQuart",
+      ease: "out(4)",
     });
-    return () => animation.cancel();
+
+    return () => anim?.cancel();
   }, [status, visibleCategories.length, search]);
 
   async function handleCreateCategory(e) {
@@ -147,7 +158,10 @@ export default function MenuManager() {
   }
 
   async function handleDeleteItem(item) {
-    const ok = await confirm(`Delete "${item.name}"? This can't be undone.`, { title: "Delete item", danger: true });
+    const ok = await confirm(`Delete "${item.name}"? This can't be undone.`, {
+      title: "Delete item",
+      danger: true,
+    });
     if (!ok) return;
     try {
       await adminApi.deleteMenuItem(item.id);
@@ -160,154 +174,287 @@ export default function MenuManager() {
 
   if (status === "loading") {
     return (
-      <div className="admin-menu-page admin-menu-loading" aria-busy="true">
-        <div className="admin-page-head">
-          <div>
-            <div className="menu-page-kicker">MENU STUDIO</div>
-            <h1>Menu</h1>
-            <p>Loading your dishes…</p>
+      <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 space-y-6 sm:space-y-8 animate-pulse" aria-busy="true">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5 sm:pb-6">
+          <div className="space-y-3">
+            <div className="h-3 w-24 bg-muted"></div>
+            <div className="h-8 sm:h-10 w-40 bg-muted"></div>
+            <div className="h-3 sm:h-4 w-56 bg-muted"></div>
           </div>
-          <div className="menu-loading-pulse" />
         </div>
-        <div className="menu-loading-grid">
-          {Array.from({ length: 4 }).map((_, index) => <div key={index} />)}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className={`h-24 bg-muted border border-border ${index === 3 ? "col-span-2 lg:col-span-1" : ""}`}></div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6 mt-8">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="h-64 bg-muted border border-border"></div>
+          ))}
         </div>
       </div>
     );
   }
 
   if (status === "error") {
-    return <EmptyState icon="⚠️" title="Something went wrong" message={error} />;
+    return (
+      <div className="w-full h-full flex items-center justify-center p-8">
+        <EmptyState icon="⚠️" title="Something went wrong" message={error} />
+      </div>
+    );
   }
 
   return (
-    <div className="admin-menu-page">
-      <div className="admin-page-head">
-        <div>
-          <div className="menu-page-kicker"><span /> Menu studio</div>
-          <h1>Menu</h1>
-          <p>Keep every dish clear, current, and ready to order.</p>
-        </div>
-        <div className="admin-page-head-actions">
-          <button className="btn btn-secondary btn-sm" onClick={() => setCategorySheetOpen(true)}>
-            + Category
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={() => openItemSheet()} disabled={categories.length === 0}>
-            + Item
-          </button>
-        </div>
-      </div>
-
-      <div className="menu-overview-bar">
-        <div className="menu-overview-stat"><strong>{categories.length}</strong><span>categories</span></div>
-        <div className="menu-overview-stat"><strong>{categories.reduce((sum, category) => sum + category.items.length, 0)}</strong><span>dishes</span></div>
-        <div className="menu-overview-stat"><strong>{categories.reduce((sum, category) => sum + category.items.filter((item) => item.available).length, 0)}</strong><span>available now</span></div>
-        <label className="menu-search-field">
-          <span aria-hidden="true">⌕</span>
-          <input type="search" placeholder="Find a dish" value={search} onChange={(e) => setSearch(e.target.value)} aria-label="Find a dish" />
-        </label>
-      </div>
-
-      {categories.length === 0 ? (
-        <EmptyState
-          icon={<span className="icon" style={{ width: 28, height: 28 }}><IconMenu /></span>}
-          title="No categories yet"
-          message="Add a category first, then add items to it."
-          action={
-            <button className="btn btn-primary" onClick={() => setCategorySheetOpen(true)}>
-              Add category
-            </button>
-          }
-        />
-      ) : (
-        visibleCategories.length === 0 ? (
-          <EmptyState icon="⌕" title="No dishes found" message="Try another dish name or description." />
-        ) : visibleCategories.map((category) => (
-          <div key={category.id} className="admin-category-block">
-            <div className="menu-category-heading">
-              <div><span className="menu-category-index">{String(categories.findIndex((entry) => entry.id === category.id) + 1).padStart(2, "0")}</span><h3>{category.name}</h3></div>
-              <button className="menu-add-inline" onClick={() => openItemSheet(category.id)}>+ Add dish</button>
-            </div>
-            {category.items.length === 0 ? (
-              <EmptyState
-                icon="🍽️"
-                title="No items in this category"
-                action={
-                  <button className="btn btn-secondary btn-sm" onClick={() => openItemSheet(category.id)}>
-                    Add item
-                  </button>
-                }
-              />
-            ) : (
-              <div className="menu-dish-grid">
-                {category.items.map((item) => (
-                <div key={item.id} className="menu-dish-card" data-menu-item>
-                  {item.image_url ? <img src={item.image_url} alt="" className="menu-dish-image" /> : <div className="menu-dish-image menu-dish-placeholder">{item.name.charAt(0).toUpperCase()}</div>}
-                  <div className="menu-dish-body">
-                    <div className="menu-dish-title-row"><strong>{item.name}</strong><span>₹{Number(item.price).toFixed(2)}</span></div>
-                    {item.description && <p>{item.description}</p>}
-                    <div className="menu-dish-actions">
-                      <button className={`availability-toggle ${item.available ? "available" : "unavailable"}`} onClick={() => handleToggleAvailable(item)}>
-                        {item.available ? "Available" : "Hidden"}
-                      </button>
-                      <button className="icon-btn-sm menu-edit-button" onClick={() => openEditItem(item)} aria-label={`Edit ${item.name}`}><Pencil size={14} /></button>
-                      <button className="icon-btn-sm" onClick={() => handleDeleteItem(item)} aria-label={`Delete ${item.name}`}>✕</button>
-                    </div>
-                  </div>
-                </div>
-                ))}
-              </div>
-            )}
+    <div className="w-full max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 min-h-screen bg-background text-foreground flex flex-col gap-6 sm:gap-8 overflow-x-hidden">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5 sm:pb-6">
+        <div className="space-y-1">
+          <div className="text-[10px] sm:text-xs font-bold tracking-widest text-primary uppercase flex items-center gap-2">
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-primary"></span> Menu Studio
           </div>
-        ))
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Menu</h1>
+          <p className="text-sm font-medium text-muted-foreground">Keep every dish clear, current, and ready to order.</p>
+        </div>
+        <div className="flex items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+          <Button variant="outline" className="flex-1 sm:flex-none font-bold rounded-none border-border" onClick={() => setCategorySheetOpen(true)}>
+            + Category
+          </Button>
+          <Button className="flex-1 sm:flex-none font-bold rounded-none" onClick={() => openItemSheet()} disabled={categories.length === 0}>
+            + Item
+          </Button>
+        </div>
+      </div>
+
+      {/* Overview Bar */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="border border-border bg-card p-4 sm:p-5 flex flex-col justify-between space-y-2">
+          <span className="text-2xl sm:text-3xl font-black tracking-tight">{categories.length}</span>
+          <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Categories</span>
+        </div>
+        <div className="border border-border bg-card p-4 sm:p-5 flex flex-col justify-between space-y-2">
+          <span className="text-2xl sm:text-3xl font-black tracking-tight">
+            {categories.reduce((sum, category) => sum + category.items.length, 0)}
+          </span>
+          <span className="text-[10px] sm:text-xs font-bold text-muted-foreground uppercase tracking-widest">Total Dishes</span>
+        </div>
+        <div className="border border-primary bg-primary/5 p-4 sm:p-5 flex flex-col justify-between space-y-2">
+          <span className="text-2xl sm:text-3xl font-black text-primary tracking-tight">
+            {categories.reduce((sum, category) => sum + category.items.filter((item) => item.available).length, 0)}
+          </span>
+          <span className="text-[10px] sm:text-xs font-bold text-primary/80 uppercase tracking-widest">Available Now</span>
+        </div>
+        <div className="col-span-2 lg:col-span-1 flex flex-col justify-center border border-border bg-card p-4 sm:p-5">
+          <div className="relative w-full">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-bold" aria-hidden="true">
+              ⌕
+            </span>
+            <Input
+              type="search"
+              placeholder="Find a dish..."
+              className="pl-8 rounded-none border-border bg-background focus-visible:ring-primary h-10 font-medium"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              aria-label="Find a dish"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      {categories.length === 0 ? (
+        <div className="mt-4 sm:mt-8 border border-border bg-card p-6 sm:p-12 flex items-center justify-center">
+          <EmptyState
+            icon={<span className="text-muted-foreground w-10 h-10 flex items-center justify-center"><IconMenu /></span>}
+            title="No categories yet"
+            message="Structure your menu by adding a category first, then populate it with dishes."
+            action={
+              <Button className="mt-4 rounded-none font-bold" onClick={() => setCategorySheetOpen(true)}>
+                Add your first category
+              </Button>
+            }
+          />
+        </div>
+      ) : visibleCategories.length === 0 ? (
+        <div className="mt-4 sm:mt-8 border border-border bg-card p-6 sm:p-12 flex items-center justify-center">
+          <EmptyState icon="⌕" title="No dishes found" message="Try adjusting your search terms." />
+        </div>
+      ) : (
+        <div className="space-y-10 sm:space-y-12 pb-24">
+          {visibleCategories.map((category) => (
+            <div key={category.id} className="space-y-5 sm:space-y-6">
+              {/* Category Header */}
+              <div className="flex items-end justify-between border-b-2 border-primary/20 pb-2">
+                <div className="flex items-baseline gap-2 sm:gap-3">
+                  <span className="text-xs sm:text-sm font-bold text-muted-foreground w-5 sm:w-6">
+                    {String(categories.findIndex((entry) => entry.id === category.id) + 1).padStart(2, "0")}
+                  </span>
+                  <h3 className="text-xl sm:text-2xl font-extrabold tracking-tight">{category.name}</h3>
+                </div>
+                <button
+                  className="text-[10px] sm:text-xs font-bold text-primary hover:text-primary/80 transition-colors uppercase tracking-widest shrink-0"
+                  onClick={() => openItemSheet(category.id)}
+                >
+                  + Add dish
+                </button>
+              </div>
+
+              {category.items.length === 0 ? (
+                <div className="border border-dashed border-border p-6 sm:p-8 bg-muted/30">
+                  <EmptyState
+                    icon="🍽️"
+                    title="Category is empty"
+                    action={
+                      <Button variant="outline" className="mt-4 rounded-none font-bold" onClick={() => openItemSheet(category.id)}>
+                        Add item
+                      </Button>
+                    }
+                  />
+                </div>
+              ) : (
+                <div className="flex sm:grid overflow-x-auto sm:overflow-x-visible sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6 pb-4 sm:pb-0 snap-x sm:snap-none">
+                  {category.items.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex flex-col bg-card border border-border shadow-sm hover:shadow-md transition-shadow duration-200 w-[260px] sm:w-auto shrink-0 snap-start"
+                      data-menu-item
+                    >
+                      {/* Image / Placeholder */}
+                      <div className="aspect-[4/3] bg-muted relative overflow-hidden border-b border-border">
+                        {item.image_url ? (
+                          <img
+                            src={item.image_url}
+                            alt={item.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-4xl font-black text-muted-foreground/30">
+                            {item.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Card Body */}
+                      <div className="p-4 sm:p-5 flex flex-col flex-1">
+                        <div className="flex justify-between items-start gap-3 mb-2">
+                          <strong className="text-base sm:text-lg font-extrabold leading-tight tracking-tight">{item.name}</strong>
+                          <span className="text-sm sm:text-base font-black text-primary shrink-0">
+                            ₹{Number(item.price).toFixed(2)}
+                          </span>
+                        </div>
+                        {item.description && (
+                          <p className="text-[13px] sm:text-sm font-medium text-muted-foreground line-clamp-2 mb-4 flex-1">
+                            {item.description}
+                          </p>
+                        )}
+
+                        {/* Actions */}
+                        <div className="mt-auto pt-4 border-t border-border flex items-center justify-between gap-2">
+                          <button
+                            className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider border transition-colors ${
+                              item.available
+                                ? "bg-primary/10 text-primary border-primary/20 hover:bg-primary hover:text-primary-foreground"
+                                : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+                            }`}
+                            onClick={() => handleToggleAvailable(item)}
+                          >
+                            {item.available ? "Available" : "Hidden"}
+                          </button>
+
+                          <div className="flex items-center gap-1">
+                            <button
+                              className="p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                              onClick={() => openEditItem(item)}
+                              aria-label={`Edit ${item.name}`}
+                            >
+                              <Pencil size={16} />
+                            </button>
+                            <button
+                              className="p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                              onClick={() => handleDeleteItem(item)}
+                              aria-label={`Delete ${item.name}`}
+                            >
+                              <span className="text-lg leading-none font-bold">✕</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
       )}
 
+      {/* Sheet for Category creation */}
       <Sheet open={categorySheetOpen} onClose={() => setCategorySheetOpen(false)} title="Add category">
-        <form className="stacked-form" onSubmit={handleCreateCategory}>
-          <div className="field">
-            <label>Category name</label>
-            <div className="category-suggestion-chips" aria-label="Suggested categories">
+        <form className="flex flex-col gap-6 mt-6" onSubmit={handleCreateCategory}>
+          <div className="space-y-4">
+            <Label className="text-sm font-bold">Category name</Label>
+            <div className="flex flex-wrap gap-2 mb-2" aria-label="Suggested categories">
               {CATEGORY_SUGGESTIONS.map((suggestion) => (
                 <button
                   key={suggestion}
                   type="button"
-                  className={`category-suggestion-chip ${newCategoryName === suggestion ? "selected" : ""}`}
+                  className={`px-3 py-1.5 text-[10px] sm:text-xs font-bold uppercase tracking-wider border transition-colors ${
+                    newCategoryName === suggestion
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background text-muted-foreground border-border hover:bg-accent hover:text-accent-foreground"
+                  }`}
                   onClick={() => setNewCategoryName(suggestion)}
                 >
                   + {suggestion}
                 </button>
               ))}
             </div>
-            <input
+            <Input
               placeholder="e.g. Desserts"
+              className="rounded-none border-border focus-visible:ring-primary font-medium"
               value={newCategoryName}
               onChange={(e) => setNewCategoryName(e.target.value)}
               required
               autoFocus
             />
           </div>
-          <button type="submit" className="btn btn-primary btn-block" disabled={creatingCategory}>
+          <Button type="submit" className="w-full rounded-none font-bold" disabled={creatingCategory}>
             {creatingCategory ? <Spinner size={16} /> : "Add category"}
-          </button>
+          </Button>
         </form>
       </Sheet>
 
-      <Sheet open={itemSheetOpen} onClose={() => { setItemSheetOpen(false); setEditingItem(null); }} title={editingItem ? "Edit menu item" : "Add menu item"}>
-        <form className="stacked-form menu-item-sheet-form" onSubmit={handleCreateItem}>
-          <div className="menu-item-sheet-intro">
-            <span className="menu-item-sheet-mark">+</span>
-            <div>
-              <strong>Add a dish to your menu</strong>
-              <span>Give guests the details they need to choose quickly.</span>
+      {/* Sheet for Item creation/editing */}
+      <Sheet
+        open={itemSheetOpen}
+        onClose={() => {
+          setItemSheetOpen(false);
+          setEditingItem(null);
+        }}
+        title={editingItem ? "Edit menu item" : "Add menu item"}
+      >
+        <form className="flex flex-col gap-4 sm:gap-5 mt-6 pb-6" onSubmit={handleCreateItem}>
+          <div className="flex gap-3 sm:gap-4 p-4 bg-muted/50 border border-border mb-2">
+            <span className="text-primary font-black text-xl leading-none">+</span>
+            <div className="flex flex-col">
+              <strong className="text-sm font-extrabold">{editingItem ? "Edit dish details" : "Add a dish to your menu"}</strong>
+              <span className="text-xs font-medium text-muted-foreground mt-1">Give guests the details they need to choose quickly.</span>
             </div>
           </div>
-          <div className="field">
-            <label>Name</label>
-            <input value={itemForm.name} onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })} required />
+
+          <div className="space-y-2">
+            <Label className="font-bold text-sm">Name</Label>
+            <Input
+              className="rounded-none border-border focus-visible:ring-primary font-medium"
+              value={itemForm.name}
+              onChange={(e) => setItemForm({ ...itemForm, name: e.target.value })}
+              required
+            />
           </div>
-          <div className="field">
-            <label>Category</label>
-            <select
+
+          <div className="space-y-2">
+            <Label className="font-bold text-sm">Category</Label>
+            <Select
+              className="w-full rounded-none border-border focus-visible:ring-primary font-medium"
               value={itemForm.category_id}
               onChange={(e) => setItemForm({ ...itemForm, category_id: e.target.value })}
               required
@@ -320,37 +467,44 @@ export default function MenuManager() {
                   {c.name}
                 </option>
               ))}
-            </select>
+            </Select>
           </div>
-          <div className="field">
-            <label>Price</label>
-            <input
+
+          <div className="space-y-2">
+            <Label className="font-bold text-sm">Price (₹)</Label>
+            <Input
               type="number"
               step="0.01"
               min="0"
+              className="rounded-none border-border focus-visible:ring-primary font-medium"
               value={itemForm.price}
               onChange={(e) => setItemForm({ ...itemForm, price: e.target.value })}
               required
             />
           </div>
-          <div className="field">
-            <label>Description (optional)</label>
-            <textarea
+
+          <div className="space-y-2">
+            <Label className="font-bold text-sm">Description <span className="text-muted-foreground font-medium">(optional)</span></Label>
+            <Textarea
               rows="3"
+              className="rounded-none border-border focus-visible:ring-primary resize-none font-medium"
               value={itemForm.description}
               onChange={(e) => setItemForm({ ...itemForm, description: e.target.value })}
             />
           </div>
-          <div className="field">
-            <label>Image URL (optional)</label>
-            <input
+
+          <div className="space-y-2">
+            <Label className="font-bold text-sm">Image URL <span className="text-muted-foreground font-medium">(optional)</span></Label>
+            <Input
+              className="rounded-none border-border focus-visible:ring-primary font-medium"
               value={itemForm.image_url}
               onChange={(e) => setItemForm({ ...itemForm, image_url: e.target.value })}
             />
           </div>
-          <button type="submit" className="btn btn-primary btn-block" disabled={creatingItem}>
+
+          <Button type="submit" className="w-full mt-4 rounded-none font-bold" disabled={creatingItem}>
             {creatingItem ? <Spinner size={16} /> : editingItem ? "Save changes" : "Add item"}
-          </button>
+          </Button>
         </form>
       </Sheet>
     </div>

@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { IconCheck } from "./ui/Icons";
+import { Button } from "./ui/button";
 
 const STATUS_LABELS = {
   pending: "Pending",
@@ -9,6 +10,15 @@ const STATUS_LABELS = {
   served: "Served",
   completed: "Completed",
   cancelled: "Cancelled",
+};
+
+const STATUS_DOT_COLORS = {
+  pending: "bg-amber-500",
+  preparing: "bg-blue-500",
+  ready: "bg-emerald-500",
+  served: "bg-purple-500",
+  completed: "bg-emerald-500",
+  cancelled: "bg-destructive",
 };
 
 /**
@@ -67,51 +77,68 @@ export default function StatusDropdown({ value, options, disabled, onChange }) {
   }, [open, options.length]);
 
   const currentLabel = STATUS_LABELS[value] || value || "Set status";
+  const currentDotColor = STATUS_DOT_COLORS[value] || "bg-muted-foreground";
 
   return (
-    <div className={`status-dropdown ${open ? "open" : ""}`} ref={rootRef}>
-      <button
+    <div className="relative inline-block text-left" ref={rootRef}>
+      <Button
         type="button"
-        className="status-dropdown-trigger"
+        variant="outline"
+        className="h-9 px-3 py-1.5 text-xs font-semibold uppercase tracking-wider inline-flex items-center gap-2 justify-between border-input bg-background text-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
         disabled={disabled}
         ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span className={`status-dropdown-dot status-dot-${value}`} aria-hidden="true" />
-        {currentLabel}
-        <svg className="status-dropdown-chevron" width="11" height="7" viewBox="0 0 11 7" fill="none">
+        <span className="flex items-center gap-2">
+          <span className={`h-2 w-2 shrink-0 ${currentDotColor}`} aria-hidden="true" />
+          <span>{currentLabel}</span>
+        </span>
+        <svg
+          className={`h-3 w-3 shrink-0 text-muted-foreground transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+          viewBox="0 0 11 7"
+          fill="none"
+        >
           <path d="M1 1.2 5.5 5.7 10 1.2" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-      </button>
+      </Button>
 
       {open && menuPosition && createPortal(
         <div
-          className="status-dropdown-menu"
+          className="fixed z-50 flex flex-col gap-0.5 border border-border bg-popover text-popover-foreground p-1 shadow-md"
           role="listbox"
           ref={menuRef}
           style={{ top: menuPosition.top, left: menuPosition.left, minWidth: menuPosition.minWidth }}
         >
-          {options.map((opt) => (
-            <button
-              key={opt}
-              type="button"
-              role="option"
-              aria-selected={opt === value}
-              className={`status-dropdown-option ${opt === value ? "selected" : ""}`}
-              onClick={() => {
-                setOpen(false);
-                if (opt !== value) onChange(opt);
-              }}
-            >
-              <span className={`status-dropdown-dot status-dot-${opt}`} aria-hidden="true" />
-              {STATUS_LABELS[opt] || opt}
-              {opt === value && (
-                <span className="status-dropdown-check icon"><IconCheck /></span>
-              )}
-            </button>
-          ))}
+          {options.map((opt) => {
+            const isSelected = opt === value;
+            const dotColor = STATUS_DOT_COLORS[opt] || "bg-muted-foreground";
+            return (
+              <Button
+                key={opt}
+                type="button"
+                variant="ghost"
+                role="option"
+                aria-selected={isSelected}
+                className={`h-8 w-full justify-start gap-2 px-2.5 text-xs font-medium transition-colors ${
+                  isSelected ? "bg-accent text-accent-foreground font-semibold" : "hover:bg-accent/80 hover:text-accent-foreground"
+                }`}
+                onClick={() => {
+                  setOpen(false);
+                  if (opt !== value) onChange(opt);
+                }}
+              >
+                <span className={`h-2 w-2 shrink-0 ${dotColor}`} aria-hidden="true" />
+                <span className="flex-1 text-left">{STATUS_LABELS[opt] || opt}</span>
+                {isSelected && (
+                  <span className="ml-auto text-primary">
+                    <IconCheck />
+                  </span>
+                )}
+              </Button>
+            );
+          })}
         </div>,
         document.body
       )}

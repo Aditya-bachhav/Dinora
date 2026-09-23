@@ -59,6 +59,12 @@ class Settings:
     # boots fine without it, same as the Razorpay vars above.
     ENCRYPTION_KEY = os.getenv("ENCRYPTION_KEY", "").strip()
 
+    # Cloudinary credentials are server-side only. The API secret must never
+    # be exposed through the frontend's VITE_* environment variables.
+    CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME", "").strip()
+    CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY", "").strip()
+    CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET", "").strip()
+
 
 settings = Settings()
 

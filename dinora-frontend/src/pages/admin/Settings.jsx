@@ -6,6 +6,10 @@ import { useToast } from "../../context/ToastContext";
 import { useConfirm } from "../../context/ConfirmContext";
 import Spinner from "../../components/ui/Spinner";
 import { IconCard, IconCheck, IconInfo, IconUsers } from "../../components/ui/Icons";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Label } from "../../components/ui/label";
+import { Select } from "../../components/ui/select";
 
 const RESTAURANT_TYPES = [
   { value: "cafe", label: "Cafe" },
@@ -160,75 +164,79 @@ export default function Settings() {
   }
 
   return (
-    <div className="admin-settings-page">
-      <div className="admin-page-head">
-        <div>
-          <div className="settings-page-kicker"><span /> Workspace settings</div>
-          <h1>Settings</h1>
-          <p>Keep your restaurant profile and payment setup in one calm place.</p>
+    <div className="w-full max-w-4xl mx-auto p-4 md:p-8 min-h-screen bg-background text-foreground flex flex-col gap-10">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 border-b border-border pb-6">
+        <div className="space-y-1">
+          <div className="text-xs font-bold tracking-widest text-primary uppercase flex items-center gap-2">
+            <span className="w-2 h-2 bg-primary"></span> Workspace settings
+          </div>
+          <h1 className="text-4xl font-extrabold tracking-tight">Settings</h1>
+          <p className="text-muted-foreground text-sm">Keep your restaurant profile and payment setup in one calm place.</p>
         </div>
       </div>
 
-      <div className="settings-section" data-settings-section>
-        <div className="settings-section-head">
-          <div>
-            <h2>Restaurant</h2>
-            <p>Your account details</p>
-          </div>
+      {/* Admin Section */}
+      <div className="bg-card border border-border flex flex-col opacity-0" data-settings-section>
+        <div className="p-6 border-b border-border bg-muted/20">
+          <h2 className="text-2xl font-bold tracking-tight">Restaurant</h2>
+          <p className="text-sm text-muted-foreground mt-1">Your account details</p>
         </div>
-        <div className="settings-row">
-          <span className="settings-row-label">Admin name</span>
-          <span className="settings-row-value">{admin?.name}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-border last:border-0 gap-2">
+          <span className="font-bold text-sm">Admin name</span>
+          <span className="text-muted-foreground text-sm">{admin?.name}</span>
         </div>
-        <div className="settings-row">
-          <span className="settings-row-label">Email</span>
-          <span className="settings-row-value">{admin?.email}</span>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-border last:border-0 gap-2">
+          <span className="font-bold text-sm">Email</span>
+          <span className="text-muted-foreground text-sm">{admin?.email}</span>
         </div>
       </div>
 
-      <div className="settings-section" data-settings-section>
-        <div className="settings-section-head">
-          <div>
-            <h2>Business details</h2>
-            <p>Crew size, restaurant type, and seating — helps us tailor Dinora to your operation</p>
-          </div>
+      {/* Business Details Section */}
+      <div className="bg-card border border-border flex flex-col opacity-0" data-settings-section>
+        <div className="p-6 border-b border-border bg-muted/20">
+          <h2 className="text-2xl font-bold tracking-tight">Business details</h2>
+          <p className="text-sm text-muted-foreground mt-1">Crew size, restaurant type, and seating — helps us tailor Dinora to your operation</p>
         </div>
 
         {profileStatus === "loading" && (
-          <div style={{ padding: "var(--space-4) 0" }}>
-            <Spinner size={20} />
+          <div className="p-8 flex justify-center">
+            <Spinner size={24} />
           </div>
         )}
 
         {profileStatus === "ready" && !editingProfile && (
           <>
-            <div className="settings-row" style={{ alignItems: "center" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                <div className="onboarding-option-icon" style={{ width: 32, height: 32 }}>
-                  <span className="icon" style={{ width: 16, height: 16 }}><IconUsers /></span>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-border last:border-0 gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 shrink-0 flex items-center justify-center bg-muted border border-border">
+                  <span className="w-4 h-4 text-muted-foreground flex items-center justify-center">
+                    <IconUsers />
+                  </span>
                 </div>
                 <div>
-                  <div className="settings-row-label">Crew size</div>
-                  <div className="settings-row-value">
+                  <div className="font-bold text-sm">Crew size</div>
+                  <div className="text-muted-foreground text-sm mt-0.5">
                     {profile?.crew_size != null ? `${profile.crew_size} people` : "Not set yet"}
                   </div>
                 </div>
               </div>
-              <button className="btn btn-ghost btn-sm" onClick={() => setEditingProfile(true)}>
-                {profile?.profile_complete ? "Edit" : "Add details"}
-              </button>
+              <Button variant="outline" className="rounded-none font-bold border-border" onClick={() => setEditingProfile(true)}>
+                {profile?.profile_complete ? "Edit details" : "Add details"}
+              </Button>
             </div>
+
             {profile?.profile_complete && (
               <>
-                <div className="settings-row">
-                  <span className="settings-row-label">Restaurant type</span>
-                  <span className="settings-row-value">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-border last:border-0 gap-2">
+                  <span className="font-bold text-sm">Restaurant type</span>
+                  <span className="text-muted-foreground text-sm">
                     {profile.restaurant_type ? restaurantTypeLabel(profile.restaurant_type) : "Not set"}
                   </span>
                 </div>
-                <div className="settings-row">
-                  <span className="settings-row-label">Seating capacity</span>
-                  <span className="settings-row-value">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border-b border-border last:border-0 gap-2">
+                  <span className="font-bold text-sm">Seating capacity</span>
+                  <span className="text-muted-foreground text-sm">
                     {profile.seating_capacity != null ? `${profile.seating_capacity} guests` : "Not set"}
                   </span>
                 </div>
@@ -238,23 +246,26 @@ export default function Settings() {
         )}
 
         {editingProfile && (
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="settingsCrewSize">Crew size</label>
-              <input
+          <div className="p-6 space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="settingsCrewSize" className="font-bold text-sm">Crew size</Label>
+              <Input
                 id="settingsCrewSize"
                 type="number"
                 min="1"
+                className="rounded-none border-border focus-visible:ring-primary"
                 value={crewSize}
                 onChange={(e) => setCrewSize(e.target.value)}
                 placeholder="e.g. 6"
               />
-              <small>Everyone working here day to day — kitchen, floor, and you.</small>
+              <p className="text-xs text-muted-foreground">Everyone working here day to day — kitchen, floor, and you.</p>
             </div>
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="settingsRestaurantType">Restaurant type</label>
-              <select
+            
+            <div className="space-y-2">
+              <Label htmlFor="settingsRestaurantType" className="font-bold text-sm">Restaurant type</Label>
+              <Select
                 id="settingsRestaurantType"
+                className="w-full rounded-none border-border focus-visible:ring-primary bg-background"
                 value={restaurantType}
                 onChange={(e) => setRestaurantType(e.target.value)}
               >
@@ -262,117 +273,151 @@ export default function Settings() {
                 {RESTAURANT_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
                 ))}
-              </select>
+              </Select>
             </div>
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="settingsSeatingCapacity">Seating capacity</label>
-              <input
+
+            <div className="space-y-2">
+              <Label htmlFor="settingsSeatingCapacity" className="font-bold text-sm">Seating capacity</Label>
+              <Input
                 id="settingsSeatingCapacity"
                 type="number"
                 min="1"
+                className="rounded-none border-border focus-visible:ring-primary"
                 value={seatingCapacity}
                 onChange={(e) => setSeatingCapacity(e.target.value)}
                 placeholder="e.g. 40 (optional)"
               />
             </div>
-            {profileError && <p className="form-error" style={{ marginBottom: "var(--space-4)" }}>{profileError}</p>}
-            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button
-                className="btn btn-ghost"
+
+            {profileError && (
+              <div className="text-destructive font-bold text-sm p-3 bg-destructive/10 border border-destructive/20">
+                {profileError}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="rounded-none font-bold border-border"
                 onClick={() => { setEditingProfile(false); setProfileError(""); }}
                 disabled={profileSaving}
               >
                 Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleSaveProfile} disabled={profileSaving}>
-                {profileSaving ? <Spinner size={16} /> : "Save"}
-              </button>
+              </Button>
+              <Button className="rounded-none font-bold" onClick={handleSaveProfile} disabled={profileSaving}>
+                {profileSaving ? <Spinner size={16} /> : "Save details"}
+              </Button>
             </div>
           </div>
         )}
       </div>
 
-      <div className="settings-section" data-settings-section>
-        <div className="settings-section-head">
-          <div>
-            <h2>Payment account</h2>
-            <p>Connect your own Razorpay account so payments settle directly to you</p>
-          </div>
+      {/* Payment Account Section */}
+      <div className="bg-card border border-border flex flex-col opacity-0" data-settings-section>
+        <div className="p-6 border-b border-border bg-muted/20">
+          <h2 className="text-2xl font-bold tracking-tight">Payment account</h2>
+          <p className="text-sm text-muted-foreground mt-1">Connect your own Razorpay account so payments settle directly to you</p>
         </div>
 
         {status === "loading" && (
-          <div style={{ padding: "var(--space-4) 0" }}>
-            <Spinner size={20} />
+          <div className="p-8 flex justify-center">
+            <Spinner size={24} />
           </div>
         )}
 
         {status === "ready" && !editing && (
-          <>
+          <div className="p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             {configured ? (
-              <div className="settings-row" style={{ alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                  <div className="onboarding-option-icon" style={{ background: "var(--color-success-soft)", color: "var(--color-success)", width: 32, height: 32 }}>
-                    <span className="icon" style={{ width: 16, height: 16 }}><IconCheck /></span>
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 shrink-0 flex items-center justify-center bg-primary/10 border border-primary/20">
+                    <span className="w-4 h-4 text-primary flex items-center justify-center">
+                      <IconCheck />
+                    </span>
                   </div>
                   <div>
-                    <div className="settings-row-label">Connected</div>
-                    <div className="settings-row-value">Key ID: {savedKeyId}</div>
+                    <div className="font-bold text-sm">Connected</div>
+                    <div className="text-muted-foreground text-sm mt-0.5">Key ID: {savedKeyId}</div>
                   </div>
                 </div>
-                <button className="btn btn-ghost btn-sm" onClick={handleRemove}>
+                <Button variant="outline" className="rounded-none font-bold border-border hover:bg-destructive hover:text-destructive-foreground hover:border-destructive transition-colors" onClick={handleRemove}>
                   Remove
-                </button>
-              </div>
+                </Button>
+              </>
             ) : (
-              <div className="settings-row" style={{ alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "var(--space-3)" }}>
-                  <div className="onboarding-option-icon" style={{ width: 32, height: 32 }}>
-                    <span className="icon" style={{ width: 16, height: 16 }}><IconCard /></span>
+              <>
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 shrink-0 flex items-center justify-center bg-muted border border-border">
+                    <span className="w-4 h-4 text-muted-foreground flex items-center justify-center">
+                      <IconCard />
+                    </span>
                   </div>
                   <div>
-                    <div className="settings-row-label">Not connected</div>
-                    <div className="settings-row-value">Using the platform's default payment account</div>
+                    <div className="font-bold text-sm">Not connected</div>
+                    <div className="text-muted-foreground text-sm mt-0.5">Using the platform's default payment account</div>
                   </div>
                 </div>
-                <button className="btn btn-primary btn-sm" onClick={() => setEditing(true)}>
-                  Connect
-                </button>
-              </div>
+                <Button className="rounded-none font-bold" onClick={() => setEditing(true)}>
+                  Connect account
+                </Button>
+              </>
             )}
-          </>
+          </div>
         )}
 
         {editing && (
-          <div style={{ marginTop: "var(--space-3)" }}>
-            <div className="credential-callout">
-              <span className="icon"><IconInfo /></span>
-              <p>
-                Find your Key ID and Key Secret in your Razorpay Dashboard under Settings → API
-                Keys. Your key secret is encrypted before it's stored and is never shown again.
+          <div className="p-6 space-y-6">
+            <div className="flex gap-4 items-start bg-muted/50 border border-border p-4">
+              <span className="text-primary w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                <IconInfo />
+              </span>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Find your Key ID and Key Secret in your Razorpay Dashboard under <strong>Settings → API Keys</strong>. 
+                Your key secret is encrypted before it's stored and is never shown again.
               </p>
             </div>
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="settingsKeyId">Razorpay Key ID</label>
-              <input id="settingsKeyId" value={keyId} onChange={(e) => setKeyId(e.target.value)} placeholder="rzp_live_xxxxxxxxxxxx" />
+
+            <div className="space-y-2">
+              <Label htmlFor="settingsKeyId" className="font-bold text-sm">Razorpay Key ID</Label>
+              <Input
+                id="settingsKeyId"
+                className="rounded-none border-border focus-visible:ring-primary"
+                value={keyId}
+                onChange={(e) => setKeyId(e.target.value)}
+                placeholder="rzp_live_xxxxxxxxxxxx"
+              />
             </div>
-            <div className="field" style={{ marginBottom: "var(--space-4)" }}>
-              <label htmlFor="settingsKeySecret">Razorpay Key Secret</label>
-              <input
+
+            <div className="space-y-2">
+              <Label htmlFor="settingsKeySecret" className="font-bold text-sm">Razorpay Key Secret</Label>
+              <Input
                 id="settingsKeySecret"
                 type="password"
+                className="rounded-none border-border focus-visible:ring-primary"
                 value={keySecret}
                 onChange={(e) => setKeySecret(e.target.value)}
                 placeholder="Your key secret"
               />
             </div>
-            {error && <p className="form-error" style={{ marginBottom: "var(--space-4)" }}>{error}</p>}
-            <div style={{ display: "flex", gap: "var(--space-2)" }}>
-              <button className="btn btn-ghost" onClick={() => { setEditing(false); setError(""); }} disabled={saving}>
+
+            {error && (
+              <div className="text-destructive font-bold text-sm p-3 bg-destructive/10 border border-destructive/20">
+                {error}
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                className="rounded-none font-bold border-border"
+                onClick={() => { setEditing(false); setError(""); }}
+                disabled={saving}
+              >
                 Cancel
-              </button>
-              <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? <Spinner size={16} /> : "Save"}
-              </button>
+              </Button>
+              <Button className="rounded-none font-bold" onClick={handleSave} disabled={saving}>
+                {saving ? <Spinner size={16} /> : "Save connection"}
+              </Button>
             </div>
           </div>
         )}

@@ -27,17 +27,20 @@ export default function Login() {
 
     let animation;
     let cancelled = false;
-    const startAnimation = () => import("animejs").then(({ animate, stagger }) => {
-      if (cancelled) return;
-      animation = animate(pageRef.current?.querySelectorAll("[data-login-reveal]"), {
-        opacity: [0, 1],
-        translateY: [18, 0],
-        delay: stagger(85),
-        duration: 720,
-        ease: "out(4)",
+    const startAnimation = () =>
+      import("animejs").then(({ animate, stagger }) => {
+        if (cancelled) return;
+        animation = animate(pageRef.current?.querySelectorAll("[data-login-reveal]"), {
+          opacity: [0, 1],
+          translateY: [18, 0],
+          delay: stagger(85),
+          duration: 720,
+          ease: "out(4)",
+        });
       });
-    });
-    const idleId = window.requestIdleCallback ? window.requestIdleCallback(startAnimation, { timeout: 1200 }) : window.setTimeout(startAnimation, 120);
+    const idleId = window.requestIdleCallback
+      ? window.requestIdleCallback(startAnimation, { timeout: 1200 })
+      : window.setTimeout(startAnimation, 120);
     return () => {
       cancelled = true;
       if (window.cancelIdleCallback && typeof idleId === "number") window.cancelIdleCallback(idleId);
@@ -53,7 +56,7 @@ export default function Login() {
     try {
       await login(email, password);
       toast.success("Welcome back");
-      navigate("/admin/orders", { replace: true });
+      navigate("/admin/overview", { replace: true });
     } catch (err) {
       setError(err.detail || err.message || "Login failed");
     } finally {
@@ -62,43 +65,62 @@ export default function Login() {
   }
 
   return (
-    <main className="login-page" ref={pageRef}>
-      <section className="login-story" aria-label="Dinora restaurant operations">
-        <div className="login-story-top" data-login-reveal>
-          <Link className="login-logo" to="/" aria-label="Dinora home">
-            <span className="login-logo-mark" aria-hidden="true">D</span>
-            <span>Dinora</span>
+    <main className="flex min-h-screen w-full bg-background text-foreground" ref={pageRef}>
+      {/* Promo / Branding Panel (Left) */}
+      <section
+        className="hidden lg:flex w-1/2 flex-col justify-between border-r border-sidebar-border bg-sidebar p-12 text-sidebar-foreground"
+        aria-label="Dinora restaurant operations"
+      >
+        <div className="flex items-center justify-between" data-login-reveal>
+          <Link className="flex items-center gap-3 font-bold tracking-tight text-sidebar-foreground" to="/" aria-label="Dinora home">
+            <img className="h-8 w-auto object-contain" src="https://res.cloudinary.com/dtczjdk8l/image/upload/v1790181227/logowithoutbg.png" alt="" />
+            <span className="text-xl">Dinora</span>
           </Link>
-          <span className="login-status"><span />Live operations</span>
+          <span className="inline-flex items-center gap-2 border border-sidebar-border bg-sidebar-accent/50 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground">
+            <span className="h-2 w-2 bg-emerald-500 animate-pulse" />
+            Live operations
+          </span>
         </div>
 
-        <div className="login-story-copy" data-login-reveal>
-          <p className="login-eyebrow"><Utensils size={15} /> Restaurant OS</p>
-          <h1>Make every service<br /><em>feel effortless.</em></h1>
-          <p>One calm workspace for orders, tables, menus, and the moments that keep guests coming back.</p>
+        <div className="my-auto max-w-md space-y-6" data-login-reveal>
+          <p className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-sidebar-primary">
+            <Utensils size={15} /> Restaurant OS
+          </p>
+          <h1 className="text-4xl font-bold tracking-tight leading-tight">
+            Make every service<br />
+            <em className="font-serif italic font-normal text-sidebar-primary">feel effortless.</em>
+          </h1>
+          <p className="text-base text-sidebar-foreground/80 leading-relaxed">
+            One calm workspace for orders, tables, menus, and the moments that keep guests coming back.
+          </p>
         </div>
 
-        <div className="login-story-footer" data-login-reveal>
+        <div className="flex items-center justify-between border-t border-sidebar-border pt-6 text-xs font-medium text-sidebar-foreground/60" data-login-reveal>
           <span>Built for the rhythm of hospitality</span>
           <ArrowUpRight size={18} aria-hidden="true" />
         </div>
       </section>
 
-      <section className="login-panel">
-        <div className="login-form-wrap">
-          <div className="login-mobile-logo" data-login-reveal>
-            <span className="login-logo-mark" aria-hidden="true">D</span>
-            <span>Dinora</span>
-          </div>
-          <div className="login-form-heading" data-login-reveal>
-            <p className="login-form-kicker">Welcome back</p>
-            <h2>Sign in to your workspace</h2>
-            <p>Pick up where your next great service begins.</p>
+      {/* Form Panel (Right) */}
+      <section className="flex flex-1 flex-col justify-center items-center p-6 sm:p-12 lg:p-16">
+        <div className="w-full max-w-sm space-y-8">
+          {/* Mobile Logo */}
+          <div className="flex items-center gap-3 lg:hidden" data-login-reveal>
+            <img className="h-8 w-auto object-contain" src="https://res.cloudinary.com/dtczjdk8l/image/upload/v1790181227/logowithoutbg.png" alt="" />
+            <span className="text-xl font-bold tracking-tight text-foreground">Dinora</span>
           </div>
 
-          <form onSubmit={handleSubmit} className="login-form" data-login-reveal>
-            <div className="login-field">
-              <label htmlFor="email">Work email</label>
+          <div className="space-y-2" data-login-reveal>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Welcome back</p>
+            <h2 className="text-2xl font-bold tracking-tight text-foreground">Sign in to your workspace</h2>
+            <p className="text-sm text-muted-foreground">Pick up where your next great service begins.</p>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-5" data-login-reveal>
+            <div className="space-y-2">
+              <label htmlFor="email" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                Work email
+              </label>
               <Input
                 id="email"
                 type="email"
@@ -107,16 +129,24 @@ export default function Login() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                className="h-10 bg-background border-input"
               />
             </div>
-            <div className="login-field">
-              <div className="login-label-row">
-                <label htmlFor="password">Password</label>
-                <button type="button" className="login-forgot" onClick={() => setError("Password recovery is available through your account administrator.")}>
+
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-xs font-medium text-foreground uppercase tracking-wider">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-4 hover:underline"
+                  onClick={() => setError("Password recovery is available through your account administrator.")}
+                >
                   Forgot password?
                 </button>
               </div>
-              <div className="login-password-input">
+              <div className="relative flex items-center">
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -125,22 +155,50 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  className="h-10 pr-10 bg-background border-input"
                 />
-                <button type="button" className="login-password-toggle" onClick={() => setShowPassword((visible) => !visible)} aria-label={showPassword ? "Hide password" : "Show password"}>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-0 h-10 w-10 text-muted-foreground hover:text-foreground"
+                  onClick={() => setShowPassword((visible) => !visible)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                </Button>
               </div>
             </div>
-            {error && <p className="login-error" role="alert"><LockKeyhole size={15} />{error}</p>}
-            <Button type="submit" className="login-submit" disabled={submitting}>
-              {submitting ? <Spinner size={16} /> : <>Enter workspace <ArrowUpRight size={17} /></>}
+
+            {error && (
+              <div className="flex items-center gap-2 p-3 text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20" role="alert">
+                <LockKeyhole size={15} className="shrink-0" />
+                <span>{error}</span>
+              </div>
+            )}
+
+            <Button type="submit" className="w-full h-10 font-semibold gap-2" disabled={submitting}>
+              {submitting ? (
+                <Spinner size={16} />
+              ) : (
+                <>
+                  Enter workspace <ArrowUpRight size={17} />
+                </>
+              )}
             </Button>
           </form>
 
-          <p className="login-register" data-login-reveal>
-            New to Dinora? <Link to="/admin/register">Create your restaurant account <ArrowUpRight size={14} /></Link>
-          </p>
-          <p className="login-legal" data-login-reveal>By continuing, you agree to Dinora's terms and privacy policy.</p>
+          <div className="space-y-3 text-center" data-login-reveal>
+            <p className="text-xs text-muted-foreground">
+              New to Dinora?{" "}
+              <Link to="/admin/register" className="font-semibold text-foreground hover:underline inline-flex items-center gap-0.5">
+                Create your restaurant account <ArrowUpRight size={14} />
+              </Link>
+            </p>
+            <p className="text-[11px] text-muted-foreground/70">
+              By continuing, you agree to Dinora's terms and privacy policy.
+            </p>
+          </div>
         </div>
       </section>
     </main>

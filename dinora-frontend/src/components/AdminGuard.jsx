@@ -81,7 +81,7 @@ export default function AdminGuard({ children }) {
 
   if (loading || (isAuthenticated && checkingOnboarding)) {
     return (
-      <div className="page-loading">
+      <div className="flex h-screen w-full items-center justify-center bg-background text-muted-foreground">
         <Spinner size={24} />
       </div>
     );

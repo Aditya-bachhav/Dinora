@@ -4,11 +4,19 @@ import { adminApi } from "../../services/api";
 import EmptyState from "../../components/ui/EmptyState";
 import { Skeleton } from "../../components/ui/Skeleton";
 import { IconCounter } from "../../components/ui/Icons";
+import { Card } from "../../components/ui/card";
 
 const ORDER = ["pending", "preparing", "ready", "served", "paid", "completed", "cancelled"];
 
-// Maps each status to the pill tone used elsewhere in the app, so the
-// counter reads consistently with StatusBadge on the Orders page.
+// Maps each status tone to Tailwind utility classes consistent with status badges across the app
+const PILL_STYLES = {
+  warning: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+  info: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
+  good: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30",
+  neutral: "bg-muted text-muted-foreground border-border",
+  danger: "bg-destructive/10 text-destructive border-destructive/30",
+};
+
 const STATUS_PILL = {
   pending: "warning",
   preparing: "info",
@@ -47,7 +55,9 @@ export default function CounterSummary() {
   useEffect(() => {
     if (status !== "ready" || entries.length === 0) return undefined;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      document.querySelectorAll("[data-counter-card]").forEach((card) => { card.style.opacity = "1"; });
+      document.querySelectorAll("[data-counter-card]").forEach((card) => {
+        card.style.opacity = "1";
+      });
       return undefined;
     }
     const animation = animate("[data-counter-card]", {
@@ -62,24 +72,24 @@ export default function CounterSummary() {
 
   if (status === "loading") {
     return (
-      <div className="admin-counter-page admin-counter-loading" aria-busy="true">
-        <div className="admin-page-head">
-          <div>
-            <div className="counter-page-kicker">SERVICE PULSE</div>
-            <h1>Counter</h1>
-            <p>Gathering the latest order movement…</p>
+      <div className="space-y-6 sm:space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-background text-foreground" aria-busy="true">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5 sm:pb-6">
+          <div className="space-y-1">
+            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Counter</h1>
+            <p className="text-sm font-medium text-muted-foreground">Gathering the latest order movement…</p>
           </div>
-          <div className="counter-loading-pulse" />
         </div>
-        <div className="counter-overview-grid">
-          {Array.from({ length: 3 }).map((_, i) => <div className="counter-overview-skeleton" key={i} />)}
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className={`h-24 bg-muted/40 animate-pulse border border-border ${i === 2 ? "col-span-2 sm:col-span-1" : ""}`} />
+          ))}
         </div>
-        <div className="counter-status-grid">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
           {Array.from({ length: 4 }).map((_, i) => (
-            <div className="card counter-status-skeleton" key={i}>
-              <Skeleton style={{ width: 70, height: 12 }} />
-              <Skeleton style={{ width: 48, height: 34, marginTop: 24 }} />
-            </div>
+            <Card className="border border-border bg-card p-4 space-y-4 rounded-none" key={i}>
+              <Skeleton className="w-16 h-3 rounded-none" />
+              <Skeleton className="w-12 h-8 mt-4 rounded-none" />
+            </Card>
           ))}
         </div>
       </div>
@@ -95,63 +105,99 @@ export default function CounterSummary() {
   const attention = (totals.pending || 0) + (totals.ready || 0);
 
   return (
-    <div className="admin-counter-page">
-      <div className="admin-page-head">
-        <div>
-          <div className="counter-page-kicker"><span /> Live service pulse</div>
-          <h1>Counter</h1>
-          <p>A calm read on what is happening across your restaurant.</p>
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto bg-background text-foreground overflow-x-hidden">
+      {/* Page Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-5 sm:pb-6">
+        <div className="space-y-1">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">Counter</h1>
+          <p className="text-sm font-medium text-muted-foreground">A calm read on what is happening across your restaurant.</p>
         </div>
-        <div className="counter-refresh-note"><span /> Auto-refreshing</div>
+        <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground border border-border px-2.5 py-1 bg-muted/30 self-start sm:self-center">
+          <span className="h-2 w-2 bg-emerald-500 animate-pulse" /> Auto-refreshing
+        </div>
       </div>
 
       {entries.length === 0 ? (
         <EmptyState
-          icon={<span className="icon" style={{ width: 28, height: 28 }}><IconCounter /></span>}
+          icon={<span className="inline-block w-7 h-7 text-muted-foreground"><IconCounter /></span>}
           title="No orders yet"
           message="Order status totals will appear here once guests start ordering."
         />
       ) : (
         <>
-          <div className="counter-overview-grid">
-            <div className="counter-overview-card counter-overview-featured">
-              <span className="counter-overview-label">Total orders</span>
-              <strong>{total}</strong>
-              <span>All orders in this service</span>
+          {/* Summary Overview Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-6">
+            <div className="border border-primary bg-primary/5 p-4 sm:p-5 flex flex-col justify-between space-y-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">Total orders</span>
+              <strong className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">{total}</strong>
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">All in service</span>
             </div>
-            <div className="counter-overview-card">
-              <span className="counter-overview-label">In service</span>
-              <strong>{active}</strong>
-              <span>Pending through served</span>
+
+            <div className="border border-border bg-card p-4 sm:p-5 flex flex-col justify-between space-y-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground">In service</span>
+              <strong className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">{active}</strong>
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Pending through served</span>
             </div>
-            <div className="counter-overview-card counter-overview-attention">
-              <span className="counter-overview-label">Needs a look</span>
-              <strong>{attention}</strong>
-              <span>Pending or ready now</span>
+
+            <div className="col-span-2 sm:col-span-1 border border-amber-500/40 bg-amber-500/5 p-4 sm:p-5 flex flex-col justify-between space-y-3">
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400">Needs a look</span>
+              <strong className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">{attention}</strong>
+              <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">Pending or ready now</span>
             </div>
           </div>
-          <div className="counter-section-head">
-            <div>
-              <strong>Order movement</strong>
-              <span>Every status, at a glance</span>
+
+          {/* Section Heading */}
+          <div className="flex items-center justify-between border-b border-border pb-3 sm:pb-4">
+            <div className="space-y-0.5">
+              <strong className="block text-sm font-extrabold text-foreground tracking-tight">Order movement</strong>
+              <span className="block text-xs font-medium text-muted-foreground">Every status, at a glance</span>
             </div>
-            <span>{total} total</span>
+            <span className="text-xs font-bold text-muted-foreground border border-border px-2.5 py-1 bg-muted/30">
+              {total} total
+            </span>
           </div>
-          <div className="counter-status-grid">
-            {entries.map(([statusName, count]) => (
-              <div key={statusName} className="card counter-status-card" data-counter-card>
-                <div className="counter-status-top">
-                  <span className={`counter-status-icon counter-status-icon-${statusName}`} />
-                  <span className={`pill pill-${STATUS_PILL[statusName] || "neutral"}`}>
-                    {statusName}
+
+          {/* Status Grid: 2 columns on mobile for compact layout */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {entries.map(([statusName, count]) => {
+              const pillStyle = PILL_STYLES[STATUS_PILL[statusName] || "neutral"];
+              return (
+                <Card
+                  key={statusName}
+                  className="border border-border bg-card p-4 sm:p-5 space-y-3 flex flex-col justify-between rounded-none"
+                  data-counter-card
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`inline-flex items-center border px-2 py-0.5 text-[10px] sm:text-xs font-bold capitalize ${pillStyle}`}
+                    >
+                      {statusName}
+                    </span>
+                  </div>
+                  <strong className="block text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">{count}</strong>
+                  <span className="block text-[10px] sm:text-xs font-medium text-muted-foreground leading-tight">
+                    {statusName === "pending"
+                      ? "Awaiting action"
+                      : statusName === "preparing"
+                      ? "In kitchen"
+                      : statusName === "ready"
+                      ? "Ready for floor"
+                      : statusName === "served"
+                      ? "With guest"
+                      : statusName === "paid"
+                      ? "Paid complete"
+                      : statusName === "completed"
+                      ? "Closed orders"
+                      : "Removed"}
                   </span>
-                </div>
-                <strong>{count}</strong>
-                <span>{statusName === "pending" ? "Awaiting action" : statusName === "preparing" ? "In the kitchen" : statusName === "ready" ? "Ready for the floor" : statusName === "served" ? "With the guest" : statusName === "paid" ? "Payment complete" : statusName === "completed" ? "Closed orders" : "Removed from flow"}</span>
-              </div>
-            ))}
+                </Card>
+              );
+            })}
           </div>
-          <p className="counter-footnote">Refreshes automatically every 15 seconds. Open Orders for live, per-order updates.</p>
+
+          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground pt-4 border-t border-border">
+            Refreshes automatically every 15 seconds. Open Orders for live updates.
+          </p>
         </>
       )}
     </div>

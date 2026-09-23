@@ -5,8 +5,17 @@ import { useToast } from "../../context/ToastContext";
 import Sheet from "../../components/ui/Sheet";
 import EmptyState from "../../components/ui/EmptyState";
 import Spinner from "../../components/ui/Spinner";
-import { TableRowSkeleton } from "../../components/ui/Skeleton";
 import { IconTable } from "../../components/ui/Icons";
+import { Button } from "../../components/ui/button";
+import { Input } from "../../components/ui/input";
+import { Card } from "../../components/ui/card";
+
+const STATUS_DOT_COLORS = {
+  available: "bg-emerald-500",
+  active: "bg-emerald-500",
+  occupied: "bg-amber-500",
+  reserved: "bg-sky-500",
+};
 
 export default function Tables() {
   const toast = useToast();
@@ -36,7 +45,9 @@ export default function Tables() {
   useEffect(() => {
     if (status !== "ready" || tables.length === 0) return undefined;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      document.querySelectorAll("[data-table-card]").forEach((card) => { card.style.opacity = "1"; });
+      document.querySelectorAll("[data-table-card]").forEach((card) => {
+        card.style.opacity = "1";
+      });
       return undefined;
     }
     const animation = animate("[data-table-card]", {
@@ -115,17 +126,19 @@ export default function Tables() {
 
   if (status === "loading") {
     return (
-      <div className="admin-tables-page admin-tables-loading" aria-busy="true">
-        <div className="admin-page-head">
-          <div>
-            <div className="tables-page-kicker">FLOOR PLAN</div>
-            <h1>Tables</h1>
-            <p>Setting up your guest stations…</p>
+      <div className="space-y-8 p-6 sm:p-8 lg:p-10 max-w-7xl mx-auto bg-background text-foreground" aria-busy="true">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-6">
+          <div className="space-y-1">
+            <div className="text-xs font-semibold uppercase tracking-wider text-primary">FLOOR PLAN</div>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Tables</h1>
+            <p className="text-sm text-muted-foreground">Setting up your guest stations…</p>
           </div>
-          <div className="tables-loading-pulse" />
+          <div className="h-2.5 w-2.5 bg-primary animate-pulse" />
         </div>
-        <div className="tables-map-skeleton">
-          {Array.from({ length: 6 }).map((_, index) => <div key={index} />)}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="h-36 bg-muted/40 animate-pulse border border-border" />
+          ))}
         </div>
       </div>
     );
@@ -136,22 +149,28 @@ export default function Tables() {
   }
 
   return (
-    <div className="admin-tables-page">
-      <div className="admin-page-head">
-        <div>
-          <div className="tables-page-kicker"><span /> Floor plan</div>
-          <h1>Tables</h1>
-          <p>Give every guest station a clear, scan-ready home.</p>
+    <div className="space-y-8 p-6 sm:p-8 lg:p-10 max-w-7xl mx-auto bg-background text-foreground">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-6">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
+            <span className="h-2 w-2 bg-primary" /> Floor plan
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Tables</h1>
+          <p className="text-sm text-muted-foreground">Give every guest station a clear, scan-ready home.</p>
         </div>
       </div>
 
-      <div className="tables-toolbar">
-        <div className="tables-stat-line">
-          <strong>{tables.length}</strong>
-          <span>{tables.length === 1 ? "guest station" : "guest stations"} ready</span>
+      {/* Toolbar / Create Table */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between border-b border-border pb-6">
+        <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+          <span>{tables.length}</span>
+          <span className="text-xs font-normal text-muted-foreground border border-border px-2 py-0.5 bg-muted/30">
+            {tables.length === 1 ? "guest station" : "guest stations"} ready
+          </span>
         </div>
-        <form className="tables-add-form" onSubmit={handleCreate}>
-          <input
+        <form className="flex items-center gap-2 sm:max-w-xs w-full" onSubmit={handleCreate}>
+          <Input
             type="number"
             min="1"
             placeholder="New table number"
@@ -159,53 +178,87 @@ export default function Tables() {
             onChange={(e) => setNewNumber(e.target.value)}
             required
             aria-label="New table number"
+            className="h-9 text-sm"
           />
-          <button type="submit" className="btn btn-primary" disabled={creating}>
+          <Button type="submit" disabled={creating} className="h-9 px-4 font-semibold shrink-0">
             {creating ? <Spinner size={16} /> : "Add table"}
-          </button>
+          </Button>
         </form>
       </div>
 
+      {/* Tables Grid */}
       {tables.length === 0 ? (
         <EmptyState
-          icon={<span className="icon" style={{ width: 28, height: 28 }}><IconTable /></span>}
+          icon={<span className="inline-block w-7 h-7 text-muted-foreground"><IconTable /></span>}
           title="No tables yet"
           message="Add your first table above to generate its QR code."
         />
       ) : (
-        <div className="tables-simple-grid">
-          {tables.map((table) => (
-            <div key={table.id} className="table-simple-card" data-table-card>
-              <div className="table-simple-number">{String(table.number).padStart(2, "0")}</div>
-              <div className="table-simple-details">
-                <strong>Table {table.number}</strong>
-                <span><i className={`table-simple-dot table-simple-dot-${table.status}`} />{table.status}</span>
-              </div>
-              <button className="table-simple-qr" onClick={() => handleShowQr(table)} aria-label={`View QR for table ${table.number}`}>
-                View QR
-              </button>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {tables.map((table) => {
+            const dotColor = STATUS_DOT_COLORS[table.status] || "bg-muted-foreground";
+            return (
+              <Card
+                key={table.id}
+                className="border border-border bg-card p-5 space-y-4 flex flex-col justify-between hover:border-primary/50 transition-colors"
+                data-table-card
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-3xl font-extrabold tracking-tight text-foreground font-mono block">
+                      {String(table.number).padStart(2, "0")}
+                    </span>
+                    <strong className="block text-sm font-bold text-foreground mt-1">Table {table.number}</strong>
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground capitalize border border-border px-2 py-0.5 bg-muted/20">
+                    <span className={`h-1.5 w-1.5 ${dotColor}`} />
+                    {table.status}
+                  </span>
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full font-semibold"
+                  onClick={() => handleShowQr(table)}
+                  aria-label={`View QR for table ${table.number}`}
+                >
+                  View QR
+                </Button>
+              </Card>
+            );
+          })}
         </div>
       )}
 
+      {/* QR Code Preview Sheet */}
       <Sheet open={!!qrPreview} onClose={() => setQrPreview(null)} title={qrPreview ? `Table ${qrPreview.number} QR` : ""}>
         {qrPreview && (
-          <div className="qr-sheet-content">
-            <img className="qr-image" src={qrPreview.url} alt="Table QR code" />
-            <div className="qr-url-box" onClick={handleCopyGuestUrl} style={{ cursor: "pointer" }} title="Tap to copy">
+          <div className="space-y-6 pt-4 flex flex-col items-center text-center">
+            <img
+              className="w-56 h-56 border border-border bg-white p-3 shadow-sm object-contain"
+              src={qrPreview.url}
+              alt={`Table ${qrPreview.number} QR code`}
+            />
+
+            <div
+              className="w-full p-3 bg-muted/50 border border-border text-xs font-mono text-foreground break-all text-center hover:bg-muted transition-colors cursor-pointer select-all"
+              onClick={handleCopyGuestUrl}
+              title="Tap to copy"
+            >
               {qrPreview.guestUrl}
             </div>
-            <div className="qr-sheet-actions">
-              <button className="btn btn-secondary" onClick={handleCopyGuestUrl}>
+
+            <div className="flex flex-wrap items-center justify-center gap-2 w-full pt-2">
+              <Button variant="outline" size="sm" className="font-semibold" onClick={handleCopyGuestUrl}>
                 Copy link
-              </button>
-              <button className="btn btn-secondary" onClick={handleDownloadQr}>
+              </Button>
+              <Button variant="outline" size="sm" className="font-semibold" onClick={handleDownloadQr}>
                 Download
-              </button>
-              <button className="btn btn-primary" onClick={() => setQrPreview(null)}>
+              </Button>
+              <Button size="sm" className="font-semibold" onClick={() => setQrPreview(null)}>
                 Done
-              </button>
+              </Button>
             </div>
           </div>
         )}

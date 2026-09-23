@@ -20,6 +20,7 @@ const Orders = lazy(() => import("./pages/guest/Orders"));
 const Login = lazy(() => import("./pages/admin/Login"));
 const Register = lazy(() => import("./pages/admin/Register"));
 const Onboarding = lazy(() => import("./pages/admin/Onboarding"));
+const AdminOverview = lazy(() => import("./pages/admin/Overview"));
 const OrdersDashboard = lazy(() => import("./pages/admin/OrdersDashboard"));
 const CounterSummary = lazy(() => import("./pages/admin/CounterSummary"));
 const Tables = lazy(() => import("./pages/admin/Tables"));
@@ -83,7 +84,8 @@ export default function App() {
                       </AdminGuard>
                     }
                   >
-                    <Route index element={<Navigate to="orders" replace />} />
+                    <Route index element={<Navigate to="overview" replace />} />
+                    <Route path="overview" element={<AdminOverview />} />
                     <Route path="orders" element={<OrdersDashboard />} />
                     <Route path="counter" element={<CounterSummary />} />
                     <Route path="tables" element={<Tables />} />

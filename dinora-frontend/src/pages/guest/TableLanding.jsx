@@ -41,14 +41,17 @@ export default function TableLanding() {
 
   if (status === "error") {
     return (
-      <div className="table-landing">
-        <div className="table-landing-card">
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4 sm:p-6">
+        <div className="w-full max-w-md bg-card text-card-foreground border border-border rounded-xl shadow-sm p-6 sm:p-8 animate-in fade-in zoom-in-95 duration-200">
           <EmptyState
             icon="⚠️"
             title="We couldn't find this table"
             message={error}
             action={
-              <button className="btn btn-primary" onClick={start}>
+              <button 
+                className="mt-6 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2" 
+                onClick={start}
+              >
                 Try again
               </button>
             }
@@ -59,10 +62,14 @@ export default function TableLanding() {
   }
 
   return (
-    <div className="table-landing">
-      <div className="table-landing-card">
-        <Spinner size={28} />
-        <p style={{ marginTop: 16, color: "var(--color-text-muted)" }}>Finding your table…</p>
+    <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4 sm:p-6">
+      <div className="w-full max-w-sm bg-card text-card-foreground border border-border rounded-xl shadow-sm p-8 flex flex-col items-center justify-center animate-in fade-in duration-300">
+        <div className="text-primary">
+          <Spinner size={32} />
+        </div>
+        <p className="mt-4 text-sm font-medium text-muted-foreground animate-pulse">
+          Finding your table…
+        </p>
       </div>
     </div>
   );

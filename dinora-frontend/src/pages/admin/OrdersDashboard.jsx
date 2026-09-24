@@ -13,13 +13,17 @@ import { IconOrders } from "../../components/ui/Icons";
 import { Button } from "../../components/ui/button";
 import { Card } from "../../components/ui/card";
 
-// Statuses an admin can manually set via the raw status override. "paid" is
-// intentionally excluded here — marking something paid goes through the
-// dedicated "Mark paid" button below, which calls the real payment flow
-// (idempotent, creates a Payment record) rather than just flipping the
-// status field directly.
 const MANUAL_STATUSES = ["pending", "preparing", "ready", "served", "completed", "cancelled"];
 const FILTERS = ["all", "pending", "preparing", "ready", "served", "paid", "completed", "cancelled"];
+
+// Ensures the current order status is always a valid option in the dropdown,
+// preventing blank or missing dropdowns when an order status is "paid".
+function getStatusOptions(currentStatus) {
+  if (!currentStatus || MANUAL_STATUSES.includes(currentStatus)) {
+    return MANUAL_STATUSES;
+  }
+  return [currentStatus, ...MANUAL_STATUSES];
+}
 
 export default function OrdersDashboard() {
   const toast = useToast();
@@ -205,8 +209,7 @@ export default function OrdersDashboard() {
             {visibleOrders.length} {visibleOrders.length === 1 ? "order" : "orders"}
           </span>
         </div>
-        
-        {/* Horizontally scrollable container on mobile */}
+
         <div className="flex items-center gap-1.5 overflow-x-auto pb-2 -mb-2 w-full sm:w-auto sm:pb-0 sm:mb-0 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
           {FILTERS.map((f) => {
             const isActive = filter === f;
@@ -267,8 +270,8 @@ export default function OrdersDashboard() {
 
                 <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-border">
                   <StatusDropdown
-                    value={MANUAL_STATUSES.includes(order.status) ? order.status : order.status}
-                    options={MANUAL_STATUSES}
+                    value={order.status}
+                    options={getStatusOptions(order.status)}
                     disabled={updatingId === order.id}
                     onChange={(next) => handleStatusChange(order.id, next)}
                   />
@@ -321,7 +324,7 @@ export default function OrdersDashboard() {
                     <td className="px-4 py-4">
                       <StatusDropdown
                         value={order.status}
-                        options={MANUAL_STATUSES}
+                        options={getStatusOptions(order.status)}
                         disabled={updatingId === order.id}
                         onChange={(next) => handleStatusChange(order.id, next)}
                       />

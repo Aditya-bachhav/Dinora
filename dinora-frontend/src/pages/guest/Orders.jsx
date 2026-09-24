@@ -5,21 +5,84 @@ import { connectTableSocket } from "../../services/ws";
 import { openRazorpayCheckout } from "../../services/razorpay";
 import { useToast } from "../../context/ToastContext";
 import ConnectionStatus from "../../components/ConnectionStatus";
-import OrderProgress from "../../components/ui/OrderProgress";
 import EmptyState from "../../components/ui/EmptyState";
 import { OrderCardSkeleton } from "../../components/ui/Skeleton";
 import Spinner from "../../components/ui/Spinner";
 import ClipboardList from "lucide-react/dist/esm/icons/clipboard-list";
 import ArrowRight from "lucide-react/dist/esm/icons/arrow-right";
 
-// Statuses at which the "Pay" button becomes available — matches
-// backend order_service.ALLOWED_STATUSES minus the ones that don't make
-// sense to pay for (pending/preparing/ready are still being made;
-// cancelled orders can't be paid; already-paid/completed don't need it).
 const PAYABLE_STATUSES = new Set(["served"]);
+
+const TRACKING_STEPS = [
+  { key: "pending", label: "Received" },
+  { key: "preparing", label: "Preparing" },
+  { key: "ready", label: "Ready" },
+  { key: "served", label: "Served" },
+];
 
 function money(n) {
   return `₹${n.toFixed(2)}`;
+}
+
+// Theme-compliant step tracker
+function ThemeOrderProgress({ status }) {
+  if (status === "cancelled") {
+    return (
+      <div className="text-xs font-medium text-destructive bg-destructive/10 border border-destructive/20 rounded-md p-3 text-center">
+        This order was cancelled.
+      </div>
+    );
+  }
+
+  const stepOrder = ["pending", "preparing", "ready", "served", "paid", "completed"];
+  const currentIndex = stepOrder.indexOf(status);
+
+  return (
+    <div className="w-full py-3 px-1">
+      <div className="flex items-center justify-between relative">
+        {/* Progress bar background line */}
+        <div className="absolute top-3.5 left-4 right-4 h-0.5 bg-border z-0" />
+        
+        {/* Active progress line */}
+        <div 
+          className="absolute top-3.5 left-4 h-0.5 bg-primary transition-all duration-500 z-0"
+          style={{
+            width: `${Math.min(100, Math.max(0, (currentIndex / (TRACKING_STEPS.length - 1)) * 100))}%`
+          }}
+        />
+
+        {TRACKING_STEPS.map((step, idx) => {
+          const isCompleted = currentIndex > idx || status === "paid" || status === "completed";
+          const isCurrent = currentIndex === idx && status !== "paid" && status !== "completed";
+
+          return (
+            <div key={step.key} className="relative z-10 flex flex-col items-center gap-1.5">
+              <div
+                className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 border-2 ${
+                  isCompleted
+                    ? "bg-primary border-primary text-primary-foreground"
+                    : isCurrent
+                    ? "bg-background border-primary text-primary ring-4 ring-primary/15 shadow-sm"
+                    : "bg-background border-border text-muted-foreground"
+                }`}
+              >
+                {isCompleted ? (
+                  "✓"
+                ) : isCurrent ? (
+                  <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                ) : (
+                  idx + 1
+                )}
+              </div>
+              <span className={`text-[11px] font-medium ${isCurrent || isCompleted ? "text-foreground font-semibold" : "text-muted-foreground"}`}>
+                {step.label}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 export default function Orders() {
@@ -57,9 +120,6 @@ export default function Orders() {
     }
     load();
 
-    // One initial GET, then live updates over WebSocket — no polling.
-    // This is also how a guest sees their own order flip to "paid" if an
-    // admin marks it paid at the counter on their behalf.
     const disconnect = connectTableSocket(
       sessionId,
       (event) => {
@@ -86,27 +146,17 @@ export default function Orders() {
     const sessionId = getStoredSessionId(tableToken);
     setPayingId(order.id);
     try {
-      // Step 1: server creates a Razorpay order for this order's own
-      // server-computed total — no amount is sent from here.
       const init = await guestApi.initPayment(order.id, sessionId);
-
-      // Step 2: Razorpay's own Checkout UI opens (UPI/GPay/cards/etc).
-      // We never see card or UPI details — Razorpay handles all of that.
       const rzpResponse = await openRazorpayCheckout(init, {
         name: "Dinora",
         description: `Order #${order.id}`,
       });
 
-      // Step 3: hand back what Checkout returned. The backend verifies the
-      // signature itself — this call can't make an order "paid" on its own,
-      // only a genuine verified signature can.
       await guestApi.verifyPayment(order.id, sessionId, rzpResponse);
 
       setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status: "paid" } : o)));
       toast.success("Payment successful");
     } catch (err) {
-      // A cancelled Checkout sheet lands here too (openRazorpayCheckout
-      // rejects on dismiss) — don't treat that as a hard error toast.
       if (err.message !== "Payment cancelled") {
         toast.error(err.detail || err.message || "Payment could not be completed");
       }
@@ -115,10 +165,28 @@ export default function Orders() {
     }
   }
 
+  const getStatusBadgeStyle = (orderStatus) => {
+    switch (orderStatus) {
+      case "paid":
+      case "completed":
+        return "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20";
+      case "cancelled":
+        return "bg-destructive/10 text-destructive border-destructive/20";
+      case "ready":
+      case "served":
+        return "bg-primary/10 text-primary border-primary/20";
+      case "preparing":
+      case "pending":
+        return "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20";
+      default:
+        return "bg-secondary text-secondary-foreground border-border";
+    }
+  };
+
   if (status === "loading") {
     return (
-      <div className="orders-page">
-        <div className="order-list">
+      <div className="min-h-[100dvh] bg-background p-4 pt-8 pb-32 max-w-3xl mx-auto">
+        <div className="flex flex-col gap-4">
           <OrderCardSkeleton />
           <OrderCardSkeleton />
         </div>
@@ -127,68 +195,95 @@ export default function Orders() {
   }
 
   if (status === "error") {
-    return <EmptyState icon="⚠️" title="Something went wrong" message={error} />;
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center bg-background p-4 sm:p-6 pb-32">
+        <div className="w-full max-w-md bg-card text-card-foreground border border-border rounded-xl shadow-sm p-6 sm:p-8">
+          <EmptyState icon="⚠️" title="Something went wrong" message={error} />
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="orders-page">
-      <header className="orders-header">
-        <div className="guest-page-heading">
-          <span className="guest-eyebrow"><ClipboardList size={13} /> Live order desk</span>
-          <h1>Follow every<br /><em>delicious step.</em></h1>
-          <p>Your kitchen status updates here in real time.</p>
+    <div className="min-h-[100dvh] bg-background text-foreground pb-32 pt-8 px-4 max-w-3xl mx-auto">
+      <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-8 pb-6 border-b border-border/50">
+        <div>
+          <span className="flex items-center gap-2 text-sm font-semibold tracking-wider text-primary uppercase mb-2">
+            <ClipboardList size={13} /> Live order desk
+          </span>
+          <h1 className="text-4xl font-bold tracking-tight mb-2">
+            Follow every<br />
+            <em className="text-muted-foreground font-normal italic">delicious step.</em>
+          </h1>
+          <p className="text-muted-foreground text-lg">Your kitchen status updates here in real time.</p>
         </div>
-        <span className="guest-live-status"><i /> <ConnectionStatus status={wsStatus} /></span>
+        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-card border border-border text-xs font-medium text-muted-foreground shadow-sm self-start">
+          <ConnectionStatus status={wsStatus} />
+        </div>
       </header>
 
       {orders.length === 0 ? (
-        <EmptyState
-          icon="🧾"
-          title="No orders yet"
-          message="Once you place an order it will show up here with live status updates."
-          action={
-            <button className="btn btn-primary" onClick={() => navigate(`/t/${tableToken}/menu`)}>
-              Browse menu
-            </button>
-          }
-        />
+        <div className="bg-card text-card-foreground border border-border rounded-xl shadow-sm p-8">
+          <EmptyState
+            icon="🧾"
+            title="No orders yet"
+            message="Once you place an order it will show up here with live status updates."
+            action={
+              <button 
+                className="mt-6 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2" 
+                onClick={() => navigate(`/t/${tableToken}/menu`)}
+              >
+                Browse menu
+              </button>
+            }
+          />
+        </div>
       ) : (
-        <div className="order-list">
+        <div className="flex flex-col gap-6">
           {orders.map((order) => (
-            <div key={order.id} className="card order-card">
-              <div className="order-card-header">
-                <strong>Order #{order.id}</strong>
-                <span className={`guest-order-status guest-order-status-${order.status}`}>{order.status}</span>
+            <div key={order.id} className="bg-card text-card-foreground border border-border rounded-xl shadow-sm p-5 sm:p-6 transition-all">
+              <div className="flex items-center justify-between pb-4 border-b border-border mb-4">
+                <strong className="text-lg font-bold">Order #{order.id}</strong>
+                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold capitalize border ${getStatusBadgeStyle(order.status)}`}>
+                  {order.status}
+                </span>
               </div>
 
-              <OrderProgress status={order.status} />
+              <div className="py-2 mb-4">
+                <ThemeOrderProgress status={order.status} />
+              </div>
 
-              <ul className="order-card-items">
+              <ul className="divide-y divide-border/60 my-4 text-sm">
                 {order.items.map((item) => (
-                  <li key={item.id}>
-                    <span>
-                      {item.quantity}× {item.name}
+                  <li key={item.id} className="flex justify-between items-center py-2.5 text-sm">
+                    <span className="text-foreground font-medium">
+                      <span className="text-muted-foreground mr-2 font-normal">{item.quantity}×</span>
+                      {item.name}
                     </span>
-                    <b>{money(item.line_total)}</b>
+                    <b className="font-semibold">{money(item.line_total)}</b>
                   </li>
                 ))}
               </ul>
-              <div className="order-card-total">
+
+              <div className="flex justify-between items-center font-bold text-base pt-3 border-t border-border mt-3">
                 <span>Total</span>
-                <span>{money(order.total_amount)}</span>
+                <span className="text-lg">{money(order.total_amount)}</span>
               </div>
 
               {PAYABLE_STATUSES.has(order.status) && (
                 <button
-                  className="btn btn-primary pay-btn"
+                  className="mt-5 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-semibold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-11 px-6 w-full shadow-sm"
                   disabled={payingId === order.id}
                   onClick={() => handlePay(order)}
                 >
                   {payingId === order.id ? <Spinner size={16} /> : `Pay ${money(order.total_amount)}`}
                 </button>
               )}
+
               {(order.status === "paid" || order.status === "completed") && (
-                <p className="paid-note">✓ Paid</p>
+                <p className="mt-4 text-xs font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-md py-1.5 px-3 w-fit flex items-center gap-1">
+                  ✓ Paid
+                </p>
               )}
             </div>
           ))}
@@ -196,7 +291,10 @@ export default function Orders() {
       )}
 
       {orders.length > 0 && (
-        <button className="btn btn-ghost btn-block" style={{ marginTop: 16 }} onClick={() => navigate(`/t/${tableToken}/menu`)}>
+        <button 
+          className="mt-6 inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-11 px-4 py-2 w-full gap-2 border border-border" 
+          onClick={() => navigate(`/t/${tableToken}/menu`)}
+        >
           Order more <ArrowRight size={15} />
         </button>
       )}
